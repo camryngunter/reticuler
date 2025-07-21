@@ -70,53 +70,50 @@ def prepare_contour(border_contour, inside_buildmesh, i, points, label, border_n
     return border_contour, inside_buildmesh
     
 def prepare_contour_list(border_contour, inside_buildmesh, i, points, label, ns_border=1, border_name="contour", i_tsh=1023):
-    # print(border_name,ns_border)
-    # if not np.isscalar(ns_border):
-    #     ns_border = arr2str(ns_border)
+    n_points = len(points)
+    if np.isscalar(ns_border):
+        ns_border = np.ones(n_points-1, dtype=int) * ns_border
+
     border_contour = (
         border_contour
-        + "real[int] {b_n}{i}X({n}); real[int] {b_n}{i}Y({n}); int[int] {b_n}{i}N({n}-1);".format(b_n=border_name, i=i, n=len(points))
+        + f"real[int] {border_name}{i}X({n_points}); real[int] {border_name}{i}Y({n_points}); int[int] {border_name}{i}N({n_points-1});"
         )
     if not np.isscalar(label):
         border_contour = (
-        border_contour
-        + "int[int] {b_n}{i}BC({n});\n".format(b_n=border_name, i=i, n=len(points))
+            border_contour
+            + f" int[int] {border_name}{i}BC({n_points-1});"
         )
-    for j in range((len(points)-1)//i_tsh+1):
+    for j in range((n_points-1)//i_tsh+1):
+        ind0 = j*i_tsh
+        ind1 = (j+1)*i_tsh
+
         border_contour = (
             border_contour
-            + "\n{b_n}{i}X({ind0}:{ind1})={pointsX};\n{b_n}{i}Y({ind0}:{ind1})={pointsY};\n".format( \
-                        b_n=border_name, i=i, ind0=j*i_tsh, ind1=(j+1)*i_tsh, \
-                        pointsX=arr2str(points[j*i_tsh:(j+1)*i_tsh,0]),
-                        pointsY=arr2str(points[j*i_tsh:(j+1)*i_tsh,1]),
-                        N=arr2str(points[j*i_tsh:(j+1)*i_tsh,1])
-                            ) 
-            )
-        if not np.isscalar(ns_border):
-            border_contour = (
-            border_contour
-            + "{b_n}{i}N({ind0}:{ind1})={N};\n".format(b_n=border_name, i=i, ind0=j*i_tsh, ind1=(j+1)*i_tsh, \
-                                                       N=arr2str(ns_border[j*i_tsh:(j+1)*i_tsh]))
-            )            
-        if not np.isscalar(label):
-            border_contour = (
-            border_contour
-            + "{b_n}{i}BC({ind0}:{ind1})={bcs};\n".format(b_n=border_name, i=i, ind0=j*i_tsh, ind1=(j+1)*i_tsh, \
-                                                          bcs=arr2str(label[j*i_tsh:(j+1)*i_tsh]))
+            + f"\n{border_name}{i}X({ind0}:{ind1})={arr2str(points[ind0:ind1,0])};\n{border_name}{i}Y({ind0}:{ind1})={arr2str(points[ind0:ind1,1])};\n"
             )
         
-
+        if ind0 < (n_points-1):
+            if not np.isscalar(ns_border):
+                border_contour = (
+                border_contour
+                + f"{border_name}{i}N({ind0}:{ind1})={arr2str(ns_border[ind0:ind1])};\n"
+                )            
+            if not np.isscalar(label):
+                border_contour = (
+                border_contour
+                + f"{border_name}{i}BC({ind0}:{ind1})={arr2str(label[ind0:ind1])};\n"
+                )   
+    
     if not np.isscalar(label):
-        label = "{b_n}{i}BC(i)".format(b_n=border_name, i=i)
+        label = f"{border_name}{i}BC(i)"
+       
     border_contour = (
         border_contour
-        + "border {b_n}{i}(t=0, 1; i){{ x = {b_n}{i}X(i)*(1-t) + {b_n}{i}X(i+1)*t; y = {b_n}{i}Y(i)*(1-t) + {b_n}{i}Y(i+1)*t; label={label};}}\n\n".format(
-            b_n=border_name, i=i, label=label
-        )
+        + f"border {border_name}{i}(t=0, 1; i){{ x = {border_name}{i}X(i)*(1-t) + {border_name}{i}X(i+1)*t; y = {border_name}{i}Y(i)*(1-t) + {border_name}{i}Y(i+1)*t; label={label};}}\n\n"
     )
 
     inside_buildmesh = (
-        inside_buildmesh + " {b_n}{i}({b_n}{i}N) +".format(b_n=border_name, i=i)
+        inside_buildmesh + f" {border_name}{i}({border_name}{i}N) +"
     )
     return border_contour, inside_buildmesh
 
@@ -649,7 +646,7 @@ class FreeFEM:
             
         border_box = "\nreal buildTime0=clock();\n\n"
         inside_buildmesh_box = ""
-        border_box, inside_buildmesh_box = prepare_contour_list(border_box, inside_buildmesh="", i="", points=np.vstack((points, points[0])), label=connections_bc[:,2], ns_border=ns_border, border_name="box", i_tsh=1023)
+        border_box, inside_buildmesh_box = prepare_contour_list(border_box, inside_buildmesh="", i="", points=np.vstack((points, points[0])), label=connections_bc[:,2], ns_border=ns_border, border_name="box")
         
         return border_box, inside_buildmesh_box
 
@@ -756,8 +753,8 @@ class FreeFEM:
 
         script_name = "script_{ID}_{date}.edp".format(ID=id(self),
                         date=datetime.now().strftime("%Y_%m_%d-%p%I_%M_%S"))
-        with open(script_name, "w") as edp_temp_file:
-            edp_temp_file.write(script)
+        with open(script_name, "w") as edp_file:
+            edp_file.write(script)
 
         cmd = [
             "FreeFem++",
@@ -766,7 +763,7 @@ class FreeFEM:
             "-v",
             "0",
             "-f",
-            "{file_name}".format(file_name=edp_temp_file.name),
+            "{file_name}".format(file_name=edp_file.name),
         ]
         result = subprocess.run(
             args=cmd,
@@ -806,12 +803,15 @@ class FreeFEM:
             print("\nFreeFem++ failed in the first try.\n")
             print("stdout:", out_freefem.stdout.decode())
             print("stderr:", out_freefem.stderr.decode())
-            out_freefem = self.run_freefem_temp(script.replace(\
-                            "nvAroundTips.min < 250", \
-                            "nvAroundTips.min < 350")
-                                                )
-            if out_freefem.returncode:
-                print("\nFreeFem++ didn't work with stronger mesh adaptation.\n")
+            script_name = f"script_{id(self)}_failed.edp"
+            with open(script_name, "w") as edp_temp_file:
+                edp_temp_file.write(script)            
+            # out_freefem = self.run_freefem_temp(script.replace(\
+            #                 "nvAroundTips.min < 250", \
+            #                 "nvAroundTips.min < 350")
+            #                                     )
+            # if out_freefem.returncode:
+            #     print("\nFreeFem++ didn't work with stronger mesh adaptation.\n")
             
         ai_coeffs_flat = array_from_string(out_freefem.stdout, "kopytko")
         self.flux_info = ai_coeffs_flat.reshape(len(ai_coeffs_flat) // 3, 3)
@@ -1315,6 +1315,7 @@ class FreeFEM_ThickFingers:
             contours_tree_bc.append(888)
             for b_label, tip_xy in tips_all:
                 mask = np.linalg.norm(cont-tip_xy,axis=1)<self.finger_width/2*1.01
+                mask = np.convolve(mask, [1,1], mode='valid')>1
                 if mask.any():
                     contours_tree_bc[-1] = ~mask*888 + mask*b_label
         

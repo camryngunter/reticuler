@@ -30,8 +30,8 @@ plt.rcParams.update(
         "lines.markersize": 1,
         "lines.marker": "None",
         "lines.solid_capstyle": "round",
-        "font.family": "serif",
-        "font.serif": ["Computer Modern"],  # ['Times New Roman']
+        # "font.family": "serif",
+        # "font.serif": ["Computer Modern"],  # ['Times New Roman']
     }
 )
 # 'font.size': 20,
@@ -128,7 +128,7 @@ def plot_tree(ax, system,
         # ax.plot(*line.T, **options_tree_plot)
         if not is_thick:
             ax.plot(*line.T, **options_tree_plot, transform=rot+base)
-        else:   
+        else:
             pts.append(branch.points)
     if is_thick:
         # thicken tree and find intersection with the box
@@ -139,6 +139,9 @@ def plot_tree(ax, system,
     
         plot_polygon(ax, thick_tree, transform=rot+base, 
                      edgecolor="0", facecolor=options_tree_plot["color"])
+    for branch in system.network.branches:
+        line = branch.points
+        ax.plot(*line.T, '.-', ms=5, transform=rot+base)
 
     # if xmin is not None or xmax is not None \
     #     or ymin is not None or ymax is not None:

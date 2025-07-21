@@ -733,17 +733,12 @@ class Network:
                     all_segments_outlet = index_outlet()
             
             # RECONNECTION TO OTHER BRANCHES
-            elif len(self.branches)>1 and branch.length() > 2*reconnection_distance:
+            elif len(self.branches)>1: # and branch.length() > 2*reconnection_distance:
                 mask = np.ones(len(all_segments_branches), dtype=bool)        
                 far_from_tip = sum(np.cumsum(np.flip(np.linalg.norm(branch.points[1:]-branch.points[:-1], axis=1)))>1.05*reconnection_distance)
                 mask_branch = np.logical_and(all_segments_branches[:,0]==branch.ID, all_segments_branches[:,2]>=far_from_tip-1)
                 mask[mask_branch] = False
                 
-                # if type(pde_solver).__name__ == "FreeFEM_ThickFingers":
-                #     # dr = branch.points[-1] - branch.points[-2]
-                #     # dr = dr/np.linalg.norm(dr) * pde_solver.finger_width/2 # !!!
-                #     tip = branch.points[-1] # + dr
-                # else:
                 tip = branch.points[-1]
                     
                 min_distance, ind_min, is_pt_new, reconnection_pt, _ = \
@@ -754,15 +749,16 @@ class Network:
 
                 if min_distance < reconnection_distance:
                     did_reconnect = True
-                    # to make more realistic reconnections we stretch tip further
-                    dr = branch.points[-1] - branch.points[-2]
-                    dr = dr/np.linalg.norm(dr) * pde_solver.finger_width/2 # !!!
-                    tip = branch.points[-1] + dr
-                    _, ind_min, is_pt_new, reconnection_pt, _ = \
-                                    find_reconnection_point(tip, \
-                                                        all_segments_branches[mask,4:6], \
-                                                        all_segments_branches[mask,6:], 
-                                                        too_close=1e-3)
+                    # to make more realistic reconnections for thick fingers we stretch tip further
+                    if type(pde_solver).__name__ == "FreeFEM_ThickFingers":
+                        dr = branch.points[-1] - branch.points[-2]
+                        dr = dr/np.linalg.norm(dr) * pde_solver.finger_width/2
+                        tip = branch.points[-1] + dr
+                        _, ind_min, is_pt_new, reconnection_pt, _ = \
+                                        find_reconnection_point(tip, \
+                                                            all_segments_branches[mask,4:6], \
+                                                            all_segments_branches[mask,6:], 
+                                                            too_close=1e-3)
                     
                     # reconnect to a branch
                     branch2_id = int(all_segments_branches[mask][ind_min,0])

@@ -9,7 +9,7 @@ import numpy as np
 
 
 class ModifiedEulerMethod:
-    """A class to integrate tip trajectories with modified Euler's method.
+    r"""A class to integrate tip trajectories with modified Euler's method.
     
     Modified Euler's method [Ref3]_ (x(n+1) needs to be found implicitly):
 

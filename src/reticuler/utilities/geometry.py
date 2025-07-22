@@ -226,7 +226,12 @@ class Box:
                 "width": 0.5,
             }
             options_construct.update(kwargs_construct)
-            options_construct["seeds_x"]=np.array(options_construct["seeds_x"])
+            
+            if type(options_construct["seeds_x"])==int:
+                options_construct["seeds_x"]=options_construct["width"]/options_construct["seeds_x"]*(np.arange(options_construct["seeds_x"])+0.5)
+            else:
+                options_construct["seeds_x"]=np.array(options_construct["seeds_x"])
+            
             if not len(options_construct["initial_lengths"])==len(options_construct["seeds_x"]):
                 options_construct["initial_lengths"] = (
                     np.ones(len(options_construct["seeds_x"]))

@@ -103,8 +103,8 @@ class Jellyfish:
         
         return out_growth
   
-# import matplotlib.pyplot as plt
-# fig2,ax2 = plt.subplots()
+import matplotlib.pyplot as plt
+fig2,ax2 = plt.subplots()
 class Leaf:
     """A class to handle evolution of the boundary.
 
@@ -145,6 +145,10 @@ class Leaf:
         y = top_xy_flux[:,1]
         fluxes = top_xy_flux[:,2];
         
+        print(len(fluxes))
+        ax2.plot(x, fluxes)
+        plt.pause(0.01)
+        
         # SIGMOIDA
         # fluxes0=fluxes;
         # fluxes = fluxes0.max()/(1+np.exp((np.quantile(fluxes0,0.6)-fluxes0)*3))
@@ -156,8 +160,10 @@ class Leaf:
 
         # PUSH THE BOUNDARY
         s=self.v_rim*out_growth[0] # mnożnik fluxów
-        vx=np.diff(x,prepend=2*x[0]-x[1],append=2*x[-1]-x[-2]) # warunki na brzegach = lustro względem ostatniego punktu
+        vx=np.diff(x,prepend=2*x[0]-x[1],append=2*x[-1]-x[-2]) # warunki na brzegach = symetria względem ostatniego punktu
         vy=np.diff(y,prepend=2*y[0]-y[1],append=2*y[-1]-y[-2])
+        if network.box.initial_condition==8:
+            vy=np.diff(y,prepend=y[1],append=y[-2]) # warunki na brzegach = odbicie względem osi pionowej (tylko dla prostokątów)
         if network.box.initial_condition==7 and network.box.angular_width==2*np.pi:
             vx=np.diff(x,prepend=x[-1],append=x[0]) # warunki na brzegach = cykliczne (tylko dla pełnego koła)
             vy=np.diff(y,prepend=y[-1],append=y[0])

@@ -271,7 +271,7 @@ class Box:
                     ]
                 )
             else:
-                n_points_top=int(100*options_construct["width"])
+                n_points_top=int(50*options_construct["width"])
             
             if initial_condition==8:
                 # bottom right corner

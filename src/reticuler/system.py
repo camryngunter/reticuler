@@ -428,10 +428,10 @@ class System:
             if not self.growth_gauges[0] % self.dump_every:
                 self.export_json()
                 if ax is not None:
-                    #ax.clear()
-                    ax.set_xlim(-5,5)
-                    ax.set_ylim(-5,5)
-                    ax.set_aspect(1)
+                    # ax.clear()
+                    # ax.set_xlim(0,10)
+                    # ax.set_ylim(0,5)
+                    # ax.set_aspect(1)
                     ax.plot(*np.vstack( (self.network.box.points, 
                                          self.network.box.points[0])).T, 
                             '.-', #ms=5, 

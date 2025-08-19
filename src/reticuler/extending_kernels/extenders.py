@@ -20,7 +20,7 @@ class ModifiedEulerMethod:
     pde_solver : pde_solver
     is_reconnecting : bool, default False
         A boolean condition if potential reconnections should be checked after each time step.
-    max_approximation_step : int, default 3
+    max_approximation_step : int, default 1
         Number of approximation steps:
             - 0:  explicit Euler's method
             - 1:  Heuns's method
@@ -36,7 +36,7 @@ class ModifiedEulerMethod:
         self,
         pde_solver,
         is_reconnecting=False,
-        max_approximation_step=0
+        max_approximation_step=1
     ):
         """Initialize ModifiedEulerMethod_Streamline.
 
@@ -44,7 +44,7 @@ class ModifiedEulerMethod:
         ----------
         pde_solver : object of class pde_solvers
         is_reconnecting : bool, default False
-        max_approximation_step : int, default 0
+        max_approximation_step : int, default 1
 
         Returns
         -------

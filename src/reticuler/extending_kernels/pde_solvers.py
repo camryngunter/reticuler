@@ -59,7 +59,7 @@ def prepare_contour(border_contour, inside_buildmesh, i, points, label, border_n
         border_contour = (
             border_contour
             + "border {b_n}{i}connection{j}(t=0, 1){{x={x0:.6e}+t*({ax:.6e});y={y0:.6e}+t*({ay:.6e}); label={label};}}\n".format(
-                b_n=border_name, i=i, j=j, x0=x0, ax=x1 - x0, y0=y0, ay=y1 - y0, label=label
+                b_n=border_name, i=i, j=j, x0=x0, ax=x1 - x0, y0=y0, ay=y1 - y0, label=label[j] if not np.isscalar(label) else label
             )
         )
 
@@ -647,7 +647,7 @@ class FreeFEM:
         border_box = "\nreal buildTime0=clock();\n\n"
         inside_buildmesh_box = ""
         border_box, inside_buildmesh_box = prepare_contour_list(border_box, inside_buildmesh="", i="", points=np.vstack((points, points[0])), label=connections_bc[:,2], ns_border=ns_border, border_name="box")
-        
+        # border_box, inside_buildmesh_box = prepare_contour(border_box, inside_buildmesh="", i="", points=np.vstack((points, points[0])), label=connections_bc[:,2], border_name="box")
         return border_box, inside_buildmesh_box
 
     def prepare_script(self, network):
@@ -718,43 +718,19 @@ class FreeFEM:
 
         return script
     
-    def run_freefem_temp(self, script):
-        """Run FreeFEM from temporary file and import the a1a2a3 coefficients."""
-        temporary_files = []  # to close at the end
-        with NamedTemporaryFile(suffix=".edp", mode="w", delete=False) as edp_temp_file:
-            edp_temp_file.write(script)
-            temporary_files.append(edp_temp_file)
-
-        cmd = [
-            "FreeFem++",
-            "-nw",
-            "-nc",
-            "-v",
-            "0",
-            "-f",
-            "{file_name}".format(file_name=edp_temp_file.name),
-        ]
-        result = subprocess.run(
-            args=cmd,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-
-        # close temporary files
-        for tmp_file in temporary_files:
-            tmp_file.close()
-            os.unlink(tmp_file.name)
+    def run_freefem(self, script, is_script_saved=False):
+        """Run FreeFEM."""
         
-        return result
-
-    def run_freefem(self, script):
-        """Run FreeFEM and import the a1a2a3 coefficients. Useful for debugging."""
-
-        script_name = "script_{ID}_{date}.edp".format(ID=id(self),
-                        date=datetime.now().strftime("%Y_%m_%d-%p%I_%M_%S"))
-        with open(script_name, "w") as edp_file:
-            edp_file.write(script)
+        if is_script_saved:
+            script_name = "script_{ID}_{date}.edp".format(ID=id(self),
+                            date=datetime.now().strftime("%Y_%m_%d-%p%I_%M_%S"))
+            with open(script_name, "w") as edp_file:
+                edp_file.write(script)        
+        else:
+            temporary_files = []  # to close at the end
+            with NamedTemporaryFile(suffix=".edp", mode="w", delete=False) as edp_file:
+                edp_file.write(script)
+                temporary_files.append(edp_file)
 
         cmd = [
             "FreeFem++",
@@ -765,14 +741,34 @@ class FreeFEM:
             "-f",
             "{file_name}".format(file_name=edp_file.name),
         ]
-        result = subprocess.run(
+        out_freefem = subprocess.run(
             args=cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
 
-        return result
+        # close temporary files
+        if not is_script_saved:
+            for tmp_file in temporary_files:
+                tmp_file.close()
+                os.unlink(tmp_file.name)
+                
+        if out_freefem.returncode:
+            print("\nFreeFem++ failed in the first try.\n")
+            print("stdout:", out_freefem.stdout.decode())
+            print("stderr:", out_freefem.stderr.decode())
+            script_name = f"script_{id(self)}_failed.edp"
+            with open(script_name, "w") as edp_temp_file:
+                edp_temp_file.write(script)
+            # out_freefem = self.run_freefem_temp(script.replace(\
+            #                 "nvAroundTips.min < 250", \
+            #                 "nvAroundTips.min < 350")
+            #                                     )
+            # if out_freefem.returncode:
+            #     print("\nFreeFem++ didn't work with stronger mesh adaptation.\n")
+            
+        return out_freefem
 
     def solve_PDE(self, network):
         """Solve the PDE for the field around the network.
@@ -792,12 +788,7 @@ class FreeFEM:
         """        
         script = self.prepare_script(network)
         
-        if self.is_script_saved:
-            out_freefem = self.run_freefem(script) # useful for debugging
-            # print(out_freefem.stdout)
-        else:
-            out_freefem = self.run_freefem_temp(script)
-            # print(out_freefem.stdout)
+        out_freefem = self.run_freefem(script, self.is_script_saved)
         
         if out_freefem.returncode:
             print("\nFreeFem++ failed in the first try.\n")
@@ -805,7 +796,7 @@ class FreeFEM:
             print("stderr:", out_freefem.stderr.decode())
             script_name = f"script_{id(self)}_failed.edp"
             with open(script_name, "w") as edp_temp_file:
-                edp_temp_file.write(script)            
+                edp_temp_file.write(script)
             # out_freefem = self.run_freefem_temp(script.replace(\
             #                 "nvAroundTips.min < 250", \
             #                 "nvAroundTips.min < 350")
@@ -1442,12 +1433,8 @@ class FreeFEM_ThickFingers:
         """
         script = self.prepare_script(network)
         
-        if self.is_script_saved:
-            out_freefem = FreeFEM.run_freefem(self, script) # useful for debugging
-            # print(out_freefem.stdout)
-        else:
-            out_freefem = FreeFEM.run_freefem_temp(self, script)
-            # print(out_freefem.stdout)
+        out_freefem = FreeFEM.run_freefem(self, script, self.is_script_saved)
+        # print(out_freefem.stdout)
 
         if out_freefem.returncode:
             print("\nFreeFem++ failed in the first try.\n")    

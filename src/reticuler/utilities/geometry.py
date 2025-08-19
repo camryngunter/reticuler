@@ -468,7 +468,7 @@ class Box:
             for i, theta in enumerate(np.arange(-3/8,3.1/8,1/4)*angular_width):
                 branch = Branch(
                         ID=3+i,
-                        points=cyl2cart(np.array([R_rim, R_rim-0.1]), theta+eps[i], R_rim),
+                        points=cyl2cart(np.array([R_rim, R_rim-0.075]), theta+eps[i], R_rim),
                         steps=np.array([0, 0])
                     )
                 branches.append(branch)       
@@ -686,7 +686,8 @@ class Network:
         all_segments_branches = index_branches()
         all_segments_outlet = index_outlet()
         did_reconnect = False
-        for branch in self.active_branches:
+        branches_to_iterate = self.active_branches.copy()
+        for branch in branches_to_iterate:
             # BREAKTHROUGH
             min_distance, ind_min, is_pt_new, breakthrough_pt, _ = \
                             find_reconnection_point(branch.points[-1], \
@@ -756,8 +757,12 @@ class Network:
                     did_reconnect = True
                     # to make more realistic reconnections for thick fingers we stretch tip further
                     if type(pde_solver).__name__ == "FreeFEM_ThickFingers":
-                        dr = branch.points[-1] - branch.points[-2]
-                        dr = dr/np.linalg.norm(dr) * pde_solver.finger_width/2
+                        dr1 = branch.points[-1] - branch.points[-2]
+                        dr1 = dr1/np.linalg.norm(dr1) 
+                        dr2 = reconnection_pt - branch.points[-1]
+                        dr2 = dr2/np.linalg.norm(dr2)
+                        dr = (dr1 + dr2) / 2
+                        dr = dr / np.linalg.norm(dr) * pde_solver.finger_width/2
                         tip = branch.points[-1] + dr
                         _, ind_min, is_pt_new, reconnection_pt, _ = \
                                         find_reconnection_point(tip, \

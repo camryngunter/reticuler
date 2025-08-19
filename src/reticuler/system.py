@@ -21,7 +21,7 @@ from reticuler.utilities.misc import NumpyEncoder
 from reticuler.utilities.geometry import Branch, Box, Network
 from reticuler.utilities import morphers
 from reticuler.extending_kernels import extenders, pde_solvers
-
+from reticuler.user_interface import graphics
 
 class System:
     """A class containing all the elements to run a network simulation.
@@ -423,21 +423,13 @@ class System:
             # Updating gauges, etc.
             self.__update_growth_gauges(out_growth[0])
             t_diff = time.time() - start_clock
-            print(f"Computation time: {int(t_diff/3600):d}h {int(t_diff/60):d}min")
+            print(f"Computation time: {int(t_diff/3600):d}h {int((t_diff%3600)/60):d}min")
             
             if not self.growth_gauges[0] % self.dump_every:
                 self.export_json()
                 if ax is not None:
-                    #ax.clear()
-                    ax.set_xlim(-5,5)
-                    ax.set_ylim(-5,5)
-                    ax.set_aspect(1)
-                    ax.plot(*np.vstack( (self.network.box.points, 
-                                         self.network.box.points[0])).T, 
-                            '.-', #ms=5, 
-                            color="tab:green", lw=1, alpha=0.5)
-                    for b in self.network.branches:
-                        ax.plot(*b.points.T, color="darkgreen") # '.-', 
+                    ax.clear()
+                    graphics.plot_tree(ax, self)
                     plt.pause(0.01)
 
         self.export_json()

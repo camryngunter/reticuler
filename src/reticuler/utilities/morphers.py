@@ -15,32 +15,40 @@ class Jellyfish:
 
     Attributes
     ----------
+    sprouting_thresh : float, default 1.8
+        Threshold for inserting new sprouts [mm].
     radii : array, default [0]
         How radius changed in time (corresponds to system.timestamps).       
-    timescale : float, default 0.1
-        Factor to match the time when the first sprouts connect to stomachs.
-    v_rim : float, default 1.0
-        How fast jelly radius grows [mm/day].
+    timescale : float, default 1
+        1) (earlier) Factor to match the time when the first sprout connects to stomach.
+        dt = dt * timescale
+        2) (now) timescale = pde_solver.ds / v_sprout_desired
+        Assuming that the fastest sprout grows at constant speed v_sprout_desired => dt = timescale = ds / v_sprout_desired
+    v_rim : float, default 1.4
+        Jellyfish radius growth rate [mm/day].
+
     """ 
     def __init__(
         self,
         radii=None,
-        timescale=0.1,
-        v_rim=1,
+        timescale=1,
+        v_rim=1.4,
     ):
         """Initialize Jellyfish.
 
         Parameters
         ----------
-        timescale : float, default 0.1
-        v_rim : float, default 1.0
+        sprouting_thresh : float, default 1.8
         radii : array, default [0]
+        timescale : float, default 1
+        v_rim : float, default 1.4
 
         Returns
         -------
         None.
 
         """
+        self.sprouting_thresh = 1.8
         self.radii = np.array([0]) if radii is None else radii
         self.timescale = timescale
         self.v_rim = v_rim
@@ -49,7 +57,7 @@ class Jellyfish:
         # Global growth of the box (and network)
         
         # growth factor
-        out_growth[0] = out_growth[0] * self.timescale 
+        out_growth[0] = self.timescale # * out_growth[0]
         dt = out_growth[0]
         R_rim0 = self.radii[-1]
         beta = 1 + self.v_rim * dt / R_rim0 
@@ -64,23 +72,23 @@ class Jellyfish:
         R_rim0 = self.radii[-1]
         canals_pos_ang = [-2*np.pi / 8 / 2, 2*np.pi / 8 / 2]
         for b in network.branches:
-            r, t = cart2cyl(*b.points[0], R_rim0)
+            _, t = cart2cyl(*b.points[0], R_rim0)
             canals_pos_ang.append(t)
         canals_pos_ang = np.sort(canals_pos_ang)
         distances_ang = np.diff(canals_pos_ang)
         mid_pos_ang = canals_pos_ang[:-1] + distances_ang/2
 
         max_branch_id = len(network.branches) - 1
-        for i, theta in enumerate(mid_pos_ang[distances_ang*2*R_rim0>1.1]):
+        for i, theta in enumerate(mid_pos_ang[distances_ang*2*R_rim0>self.sprouting_thresh]):
+            theta = theta+np.random.rand()*0.05/R_rim0
             print(f"Initiating new sprout at theta={theta/np.pi*180:.2f} deg.")
             branch = Branch(
                     ID=max_branch_id+i+1,
-                    points=np.vstack( cyl2cart(np.array([R_rim0, R_rim0-0.1]), \
+                    points=np.vstack( cyl2cart(np.array([R_rim0, R_rim0-0.075]), \
                                                theta, \
                                                R_rim0) ),
                     steps=np.array([step, step])
                 )
-            # +np.random.rand()*0.01
             network.branches.append(branch)       
             network.active_branches.append(branch)
             
@@ -105,6 +113,7 @@ class Jellyfish:
   
 # import matplotlib.pyplot as plt
 # fig2,ax2 = plt.subplots()
+# np.savez_compressed() to save box_history?
 class Leaf:
     """A class to handle evolution of the boundary.
 
@@ -169,7 +178,7 @@ class Leaf:
         
         min=0
         max=0.05
-        #REMOVE POINTS
+        # REMOVE POINTS
         if min>0:
             tooclose=np.logical_or(vx[1:]**2+vy[1:]**2<min**2, vx[:-1]**2+vy[:-1]**2<min**2) #wektor poprzedni lub następny za krótki
             sharp=np.abs(np.arctan2(vy[:-1],vx[:-1])-np.arctan2(vy[1:],vx[1:]))>np.pi/2 #wykrywacz dzióbków (kąt między 0->1 a 1->2 za duży)

@@ -214,7 +214,7 @@ def main():
                 output_name = f"frames_{exp_name}/" + output_name
              
             for s in steps:
-                print(f"Plotting step {s}")
+                print(f"Plotting {exp_name}, step {s}")
                 system = system0.copy()
                 if args.frames:
                     clippers.clip_to_step(system, s)
@@ -230,6 +230,7 @@ def main():
             
                 fig.savefig(output_name + f"_S{s}" + args.output_extension[0], 
                             bbox_inches="tight", dpi=400)
+                plt.close()
 
 
 if __name__ == "__main__":

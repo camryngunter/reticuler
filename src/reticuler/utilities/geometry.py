@@ -103,8 +103,8 @@ class Box:
             - 3: DIRICHLET_GLOB_FLUX, constant global flux
             - 4: NEUMANN_0, reflective BC (vanishing normal derivative)
             - 5: NEUMANN_1
-            -998:LEFT_WALL_PBC
-            -999:RIGHT_WALL_PBC
+            - 998: LEFT_WALL_PBC
+            - 999: RIGHT_WALL_PBC
     seeds_connectivity : array, default []
         A 2-n array of seeds connectivity.
             - 1st column: index in ``points``
@@ -113,7 +113,9 @@ class Box:
     """
 
     def __init__(
-        self, points=None, connections=None, boundary_conditions=None, seeds_connectivity=None, initial_condition=None, angular_width=None
+        self, points=None, connections=None, \
+            boundary_conditions=None, seeds_connectivity=None, \
+                initial_condition=None
     ):
         """Initialize Box.
 
@@ -138,7 +140,6 @@ class Box:
         self.seeds_connectivity = [] if seeds_connectivity is None else seeds_connectivity
         
         self.initial_condition = initial_condition
-        self.angular_width = angular_width
         
     def __add_points(self, points):
         self.points = np.vstack((self.points, points))
@@ -158,7 +159,7 @@ class Box:
         return copy.deepcopy(self)
 
     @classmethod
-    def construct(cls, initial_condition=0, angular_width=2*np.pi, **kwargs_construct):
+    def construct(cls, initial_condition=0, **kwargs_construct):
         """Construct a Box with given initial condition.
 
         Parameters
@@ -174,12 +175,11 @@ class Box:
             IC = 4, 5: jellyfish (an octant) with a trifork
                 - IC = 4: Dirichlet on bottom and top, but rescaled such that global flux is constant
                 - IC = 5: u=0 on top and Neumann on bottom
-            IC = 6: semielliptical leaf
-            IC = 7: circle slice leaf with seeds in center
-        angular_width: float, default 2*np.pi
-            angle of the slice
+            IC = 6: leaf semiellipse with seeds at the bottom boundary
+            IC = 7: leaf circle with seeds in the center
+            IC = 9: leaf slice with seeds in the center
         kwargs_construct:
-            IC = 0, 1, 2, 3, 8, 6
+            IC = 0, 1, 2, 3, 6, 8
                 seeds_x : array, default [0.5]
                     A 1-n array of x positions at the bottom boundary (y=0).
                 initial_lengths : array, default [0.01]
@@ -194,7 +194,7 @@ class Box:
                     Height of the rectangular system.
                 width : float, default 2.0
                     Width of the rectangular system.
-            IC = 7
+            IC = 7, 9
                 seeds_phi : array, default [0]
                     A 1-n array of phi angles at the center (0,0) relative to Y axis.
                 initial_lengths : array, default [0.4]
@@ -202,7 +202,9 @@ class Box:
                     Length must match seeds_x or be equal to 1 
                     (then the same initial length will be set for all seeds).
                 radius : float, default 0.5
-                    radius of the semicircle/circle
+                    Radius of the semicircle/circle
+                angular_width: float, default np.pi
+                    Angular width of the slice. If 2*np.pi, then initial_condition = 7.
 
         Returns
         -------
@@ -214,10 +216,10 @@ class Box:
 
         """
         # Build a box
-        box = cls(initial_condition=initial_condition,angular_width=angular_width)
+        box = cls(initial_condition=initial_condition)
 
         # Rectangular box of specified width and height
-        if initial_condition <=3 or initial_condition == 8 or initial_condition == 6:
+        if initial_condition <=3 or initial_condition == 6 or initial_condition == 8:
             options_construct = {
                 "seeds_x": [0.5],
                 "initial_lengths": [0.01],
@@ -273,6 +275,12 @@ class Box:
             else:
                 n_points_top=int(50*options_construct["width"])
             
+            if initial_condition==6:
+                # semi ellipse
+                box.__add_points(
+                    np.vstack(( options_construct["width"]*np.cos(np.linspace(0, np.pi, n_points_top)),
+                              options_construct["height"]*np.sin(np.linspace(0, np.pi, n_points_top)) )).T
+                )
             if initial_condition==8:
                 # bottom right corner
                 box.__add_points([[options_construct["width"], 0]])
@@ -287,12 +295,6 @@ class Box:
                     )
                 #bottom left corner
                 box.__add_points([[0, 0]])
-            if initial_condition==6:
-                # semi ellipse
-                box.__add_points(
-                    np.vstack(( options_construct["width"]*np.cos(np.linspace(0, np.pi, n_points_top)),
-                              options_construct["height"]*np.sin(np.linspace(0, np.pi, n_points_top)) )).T
-                )
                 
             # seeds at the bottom boundary
             box.__add_points(
@@ -310,7 +312,7 @@ class Box:
                     np.arange(sum(mask_seeds_from_outlet)),
                 )
             )
-            box.seeds_connectivity = np.row_stack(
+            box.seeds_connectivity = np.vstack(
                 (box.seeds_connectivity,
                 np.column_stack(
                     (
@@ -477,16 +479,23 @@ class Box:
                 
             branch_connectivity = np.array([[0,-1],[1,0],[2,0]])
         
-        # circle or slice
-        elif initial_condition == 7:
+        # Circle or slice
+        elif initial_condition == 7 or initial_condition == 9:
             options_construct = {
                 "seeds_phi": [0],
                 "initial_lengths": [0.1],
                 "branch_BCs": [DIRICHLET_0],
-                "radius": 0.5
+                "radius": 0.5,
+                "angular_width": np.pi,
             }
             options_construct.update(kwargs_construct)
-            
+            if options_construct["angular_width"]==2*np.pi:
+                initial_condition = 7 # full circle
+                box.initial_condition = 7 # full circle
+            elif options_construct["angular_width"]<2*np.pi:
+                initial_condition = 9 # slice
+                box.initial_condition = 9 # slice
+
             if type(options_construct["seeds_phi"])==int:
                 options_construct["seeds_phi"]=2*np.pi/options_construct["seeds_phi"]*np.arange(options_construct["seeds_phi"])
                 
@@ -502,13 +511,17 @@ class Box:
                 )
             options_construct["branch_BCs"]=np.array(options_construct["branch_BCs"])        
             
-            n_points_rim = int(100*options_construct["radius"]*angular_width)
+            n_points_rim = int(100*options_construct["radius"]*options_construct["angular_width"])
             
             # circular rim
             box.__add_points(
-                np.vstack( cyl2cart(options_construct["radius"], np.linspace(np.pi-angular_width/2,np.pi+angular_width/2, n_points_rim), 0) )
+                np.vstack( cyl2cart(options_construct["radius"], \
+                                    np.linspace(np.pi-options_construct["angular_width"]/2,\
+                                                np.pi+options_construct["angular_width"]/2, \
+                                                    n_points_rim), \
+                                    0) )
             )
-            if angular_width == 2*np.pi:
+            if initial_condition == 7:
                 box.points=box.points[1:]
                 box.seeds_connectivity = []
             else:
@@ -531,7 +544,7 @@ class Box:
                 boundary_conditions=DIRICHLET_1
                 * np.ones(len(connections_to_add), dtype=int),
             )
-            if angular_width != 2*np.pi:
+            if initial_condition == 9:
                 box.boundary_conditions[-2:] = NEUMANN_0
 
             # Creating initial branches

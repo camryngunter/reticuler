@@ -148,11 +148,11 @@ class Leaf:
         # Boundary dynamics
         top_xy_flux = out_growth[1]
         top_xy_flux = np.vstack((top_xy_flux[1],top_xy_flux[::2]))
-        if network.box.initial_condition==7 and network.box.angular_width==2*np.pi:
+        if network.box.initial_condition==7:
             top_xy_flux = top_xy_flux[:-1]
         x = top_xy_flux[:,0]
         y = top_xy_flux[:,1]
-        fluxes = top_xy_flux[:,2];
+        fluxes = top_xy_flux[:,2]
         
         # print(len(fluxes))
         # ax2.plot(x, fluxes)
@@ -173,7 +173,7 @@ class Leaf:
         vy=np.diff(y,prepend=2*y[0]-y[1],append=2*y[-1]-y[-2])
         if network.box.initial_condition==8:
             vy=np.diff(y,prepend=y[1],append=y[-2]) # warunki na brzegach = odbicie względem osi pionowej (tylko dla prostokątów)
-        if network.box.initial_condition==7 and network.box.angular_width==2*np.pi:
+        if network.box.initial_condition==7:
             vx=np.diff(x,prepend=x[-1],append=x[0]) # warunki na brzegach = cykliczne (tylko dla pełnego koła)
             vy=np.diff(y,prepend=y[-1],append=y[0])
         alfa=(np.arctan2(-vy[:-1],-vx[:-1])+np.arctan2(vy[1:],vx[1:]))/2 # kąt nachylenia dwusiecznej (między 1->0 a 1->2)
@@ -182,22 +182,34 @@ class Leaf:
         x+=(2*(vx[1:]*sy<vy[1:]*sx)-1)*sx # przesuwanie punktów (zmiana znaku nierówności zmieni zwrot)
         y+=(2*(vx[1:]*sy<vy[1:]*sx)-1)*sy
         
-        min=0
-        max=0.05
-        # REMOVE POINTS
-        if min>0:
-            tooclose=np.logical_or(vx[1:]**2+vy[1:]**2<min**2, vx[:-1]**2+vy[:-1]**2<min**2) #wektor poprzedni lub następny za krótki
-            sharp=np.abs(np.arctan2(vy[:-1],vx[:-1])-np.arctan2(vy[1:],vx[1:]))>np.pi/2 #wykrywacz dzióbków (kąt między 0->1 a 1->2 za duży)
-            par=np.array(range(x.size))%2 #0 dla parzystych, 1 dla nieparzystych, zrównanie długości par do x
-            x=np.delete(x, np.logical_or(np.logical_and(par, tooclose),sharp)) #usuwanie co drugiego punktu oraz dzióbków
-            y=np.delete(y, np.logical_or(np.logical_and(par, tooclose),sharp))
-        #ADD POINTS
-        if max>0:
-            midx=(x[:-1]+x[1:])/2 #środki odcinków
-            midy=(y[:-1]+y[1:])/2
-            toofar=np.append(False,np.diff(x)**2+np.diff(y)**2>max**2) #wektor następny za długi
-            x=np.insert(x,toofar,midx[toofar[1:]]) #wstawianie punktów w odpowiednich miejscach
-            y=np.insert(y,toofar,midy[toofar[1:]])
+        # Check separation between points and add/remove points if necessary
+        min_separation=0.005
+        max_separation=0.05 # should be > min_separation*2
+        
+        points = np.array([x, y]).T
+        processed_points = [points[0]]
+        for i in range(1, len(points)):
+            last_kept_point = processed_points[-1]
+            current_point = points[i]
+            distance = np.linalg.norm(current_point - last_kept_point)
+            # Too far apart -> Insert interpolated points
+            if distance > max_separation:
+                # Calculate how many segments of max_separation length fit between the points
+                num_segments = int(np.ceil(distance / max_separation))
+                # Use linear interpolation to generate the intermediate points
+                t_values = np.linspace(0, 1, num_segments + 1)
+                interpolated_points = (1 - t_values[:, np.newaxis]) * last_kept_point + t_values[:, np.newaxis] * current_point
+                # Add all new points to the list, except the first (which is last_kept_point)
+                processed_points.extend(interpolated_points[1:])
+            # Accepted separation range -> Keep the point
+            elif distance >= min_separation:
+                processed_points.append(current_point)
+            elif i==len(points)-1:
+                processed_points[-1] = current_point
+        # processed_points.append(points[-1])
+        print("Pts len diff: ", len(processed_points)-len(points))
+        processed_points = np.array(processed_points)
+        x, y = processed_points[:,0], processed_points[:,1]
             
         # UPDATE BOX
         n_seeds = np.sum(network.box.boundary_conditions!=DIRICHLET_1)-1
@@ -210,11 +222,11 @@ class Leaf:
             network.box.points = np.vstack(( np.stack((x,y)).T, network.box.points[-n_seeds:] ))
             network.box.points[0,1] = 0
             network.box.points[-1-n_seeds,1] = 0
-        if network.box.initial_condition==7 and network.box.angular_width==2*np.pi:
+        if network.box.initial_condition==7:
             network.box.points = np.stack((x,y)).T
-        if network.box.initial_condition==7 and network.box.angular_width!=2*np.pi:
+        if network.box.initial_condition==9:
+            aw=np.atan2(*network.box.points[0])*2
             network.box.points = np.vstack(( np.stack((x,y)).T, [0,0] ))
-            aw=network.box.angular_width
             x=network.box.points[0,0]
             y=network.box.points[0,1]
             network.box.points[0,0] = ((1-np.cos(aw))*x + np.sin(aw)*y)/2
@@ -238,7 +250,7 @@ class Leaf:
             network.box.boundary_conditions[0] = NEUMANN_0
             network.box.boundary_conditions[-2-n_seeds] = NEUMANN_0
             network.box.boundary_conditions[-1-n_seeds:] = DIRICHLET_0
-        if network.box.initial_condition==6 or (network.box.initial_condition==7 and network.box.angular_width!=2*np.pi):
+        if network.box.initial_condition==6 or (network.box.initial_condition==9):
             network.box.boundary_conditions[-1-n_seeds:] = NEUMANN_0
         self.box_history.append(network.box.copy())
         

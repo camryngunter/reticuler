@@ -203,7 +203,7 @@ class Box:
                     (then the same initial length will be set for all seeds).
                 radius : float, default 0.5
                     Radius of the semicircle/circle
-                angular_width: float, default np.pi
+                angular_width: float, default 2*np.pi
                     Angular width of the slice. If 2*np.pi, then initial_condition = 7.
 
         Returns
@@ -486,7 +486,7 @@ class Box:
                 "initial_lengths": [0.1],
                 "branch_BCs": [DIRICHLET_0],
                 "radius": 0.5,
-                "angular_width": np.pi,
+                "angular_width": 2*np.pi,
             }
             options_construct.update(kwargs_construct)
             if options_construct["angular_width"]==2*np.pi:

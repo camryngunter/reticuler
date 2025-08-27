@@ -145,7 +145,8 @@ class Leaf:
         self.v_rim = v_rim
     
     def morph(self, network, out_growth, step):
-        # Boundary dynamics
+        
+        ###### IMPORT FLUXES ######
         top_xy_flux = out_growth[1]
         top_xy_flux = np.vstack((top_xy_flux[1],top_xy_flux[::2]))
         if network.box.initial_condition==7:
@@ -167,7 +168,7 @@ class Leaf:
         # ax2.plot(np.arctan2(y,x),fluxes, '.-', ms=5)
         # plt.pause(0.01)
 
-        # PUSH THE BOUNDARY
+        ####### PUSH THE BOUNDARY ######
         s=self.v_rim*out_growth[0] # mnożnik fluxów
         vx=np.diff(x,prepend=2*x[0]-x[1],append=2*x[-1]-x[-2]) # warunki na brzegach = symetria względem ostatniego punktu
         vy=np.diff(y,prepend=2*y[0]-y[1],append=2*y[-1]-y[-2])
@@ -182,9 +183,9 @@ class Leaf:
         x+=(2*(vx[1:]*sy<vy[1:]*sx)-1)*sx # przesuwanie punktów (zmiana znaku nierówności zmieni zwrot)
         y+=(2*(vx[1:]*sy<vy[1:]*sx)-1)*sy
         
-        # Check separation between points and add/remove points if necessary
+        ###### CONTROL POINT DENSITY ######
         min_separation=0.005
-        max_separation=0.05 # should be > min_separation*2
+        max_separation=0.05
         
         points = np.array([x, y]).T
         processed_points = [points[0]]
@@ -204,14 +205,18 @@ class Leaf:
             # Accepted separation range -> Keep the point
             elif distance >= min_separation:
                 processed_points.append(current_point)
+            # If the last two points are too close, replace the penultimate point with the last
             elif i==len(points)-1:
                 processed_points[-1] = current_point
-        # processed_points.append(points[-1])
-        print("Pts len diff: ", len(processed_points)-len(points))
+        # Circular case - check the distance between the first and last point                
+        if network.box.initial_condition==7 and \
+          np.linalg.norm(processed_points[-1] - processed_points[0])<min_separation:
+            processed_points.pop(-1)
+                    
         processed_points = np.array(processed_points)
         x, y = processed_points[:,0], processed_points[:,1]
             
-        # UPDATE BOX
+        ###### UPDATE BOX ######
         n_seeds = np.sum(network.box.boundary_conditions!=DIRICHLET_1)-1
         if network.box.initial_condition==8:
             n_seeds-=2

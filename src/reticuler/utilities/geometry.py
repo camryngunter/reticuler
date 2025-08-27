@@ -241,7 +241,7 @@ class Box:
                 )
             if not len(options_construct["branch_BCs"])==len(options_construct["seeds_x"]):
                 options_construct["branch_BCs"] = (
-                    np.ones(len(options_construct["seeds_x"]))
+                    np.ones(len(options_construct["seeds_x"]), dtype=int)
                     * options_construct["branch_BCs"][0]
                 )
             options_construct["branch_BCs"]=np.array(options_construct["branch_BCs"])
@@ -506,7 +506,7 @@ class Box:
                 )
             if not len(options_construct["branch_BCs"])==len(options_construct["seeds_phi"]):
                 options_construct["branch_BCs"] = (
-                    np.ones(len(options_construct["seeds_phi"]))
+                    np.ones(len(options_construct["seeds_phi"]), dtype=int)
                     * options_construct["branch_BCs"][0]
                 )
             options_construct["branch_BCs"]=np.array(options_construct["branch_BCs"])        

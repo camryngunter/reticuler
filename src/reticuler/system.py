@@ -39,8 +39,8 @@ class System:
             - 2: network length
     growth_thresh : float, default 5
         A value of growth threshold. The simulation is stopped, when it's reached.
-    growth_gauges : array, default array([0.,0.,0.])
-        A 1-3 array with growth gauges (max step, height, network length).
+    growth_gauges : array, default array([0.,0.,0.,0.])
+        A 1-4 array with growth gauges (max step, height, network length, evolution time).
     dump_every : int, default 1
         Dumps the results every ``dump_every`` steps.
     exp_name: str, default ''
@@ -376,8 +376,12 @@ class System:
     def __update_growth_gauges(self, dt):
         """Update growth gauges."""
         self.growth_gauges[1], self.growth_gauges[2] = self.network.height_and_length()
-        self.growth_gauges[3] = self.growth_gauges[3] + dt
-        self.timestamps = np.append( self.timestamps, self.growth_gauges[3] )
+        if not (isinstance(dt, list) or isinstance(dt, np.ndarray)):
+            dt = [dt]
+        self.growth_gauges[0] = self.growth_gauges[0] + len(dt)-1
+        for dt_i in dt:
+            self.growth_gauges[3] = self.growth_gauges[3] + dt_i
+            self.timestamps = np.append( self.timestamps, self.growth_gauges[3] )
 
         print("Active branches: {n:d}".format(
             n=len(self.network.active_branches)))

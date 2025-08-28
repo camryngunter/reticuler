@@ -368,7 +368,6 @@ class Box:
             branch_connectivity = None
                 
         # Jellyfish
-        # make it smoother initially, so that it stays smooth when enlarging?        
         elif initial_condition == 4 or initial_condition == 5:
             angular_width = 2*np.pi / 8
             R_rim = 5 # mm
@@ -458,8 +457,8 @@ class Box:
                 )
             )
             # sprouts
-            eps = np.array([0.013 , -0.012, 0.008, -0.011])
-            # eps = np.random.rand(4)*0.01
+            # eps = np.array([0.013 , -0.012, 0.008, -0.011])
+            eps = np.random.uniform(low=-1, high=1, size=4)*0.1/R_rim
             for i, theta in enumerate(np.arange(-3/8,3.1/8,1/4)*angular_width):
                 branch = Branch(
                         ID=3+i,
@@ -472,7 +471,7 @@ class Box:
                 
             branch_connectivity = np.array([[0,-1],[1,0],[2,0]])
         
-        # circle or slice
+        # Leaf - circle or slice
         elif initial_condition == 7:
             options_construct = {
                 "seeds_phi": [0],

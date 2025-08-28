@@ -309,7 +309,7 @@ def main():
 
     if args.final_plot:
         fig, ax = plt.subplots()
-        graphics.plot_tree(ax, system=system, ymin=0)
+        graphics.plot_tree(ax, system=system)
         fig.savefig(system.exp_name + ".jpg", bbox_inches="tight",dpi=300)
         
         # ani = graphics.animate_tree(system0=system)

@@ -15,7 +15,7 @@ class Jellyfish:
 
     Attributes
     ----------
-    sprouting_thresh : float, default 1.8
+    sprouting_thresh : float, default 1.5
         Threshold for inserting new sprouts [mm].
     radii : array, default [0]
         How radius changed in time (corresponds to system.timestamps).       
@@ -38,7 +38,7 @@ class Jellyfish:
 
         Parameters
         ----------
-        sprouting_thresh : float, default 1.8
+        sprouting_thresh : float, default 1.5
         radii : array, default [0]
         timescale : float, default 1
         v_rim : float, default 1.4
@@ -48,7 +48,7 @@ class Jellyfish:
         None.
 
         """
-        self.sprouting_thresh = 1.8
+        self.sprouting_thresh = 1.5
         self.radii = np.array([0]) if radii is None else radii
         self.timescale = timescale
         self.v_rim = v_rim
@@ -56,31 +56,45 @@ class Jellyfish:
     def morph(self, network, out_growth, step):
         # Global growth of the box (and network)
         
+        def extend_box_check_distances():
+            # extend box and network
+            new_radii = np.append(self.radii, R_rim0*beta)
+            network.box.points[:] = extend_radially(network.box.points, R_rim0, beta)
+            for branch in network.branches:
+                branch.points[:] = extend_radially(branch.points, R_rim0, beta)
+
+            # check distances and add sprouts
+            R_rim01 = new_radii[-1]
+            canals_pos_ang = [-2*np.pi / 8 / 2, 2*np.pi / 8 / 2]
+            for b in network.branches:
+                _, t = cart2cyl(*b.points[0], R_rim01)
+                canals_pos_ang.append(t)
+            canals_pos_ang = np.sort(canals_pos_ang)
+            distances_ang = np.diff(canals_pos_ang)
+            mid_pos_ang = canals_pos_ang[:-1] + distances_ang/2
+            
+            return new_radii, R_rim01, distances_ang, mid_pos_ang
+
         # growth factor
         out_growth[0] = self.timescale # * out_growth[0]
         dt = out_growth[0]
         R_rim0 = self.radii[-1]
         beta = 1 + self.v_rim * dt / R_rim0 
-        self.radii = np.append(self.radii, R_rim0*beta)
-        
-        # extend box and network
-        network.box.points = extend_radially(network.box.points, R_rim0, beta)
-        for branch in network.branches:
-            branch.points = extend_radially(branch.points, R_rim0, beta)
-            
-        # check distances and add sprouts
-        R_rim0 = self.radii[-1]
-        canals_pos_ang = [-2*np.pi / 8 / 2, 2*np.pi / 8 / 2]
-        for b in network.branches:
-            _, t = cart2cyl(*b.points[0], R_rim0)
-            canals_pos_ang.append(t)
-        canals_pos_ang = np.sort(canals_pos_ang)
-        distances_ang = np.diff(canals_pos_ang)
-        mid_pos_ang = canals_pos_ang[:-1] + distances_ang/2
 
+        self.radii, R_rim0, distances_ang, mid_pos_ang = extend_box_check_distances()
+
+        if len(network.active_branches)==0 and \
+          not any(distances_ang*R_rim0>=self.sprouting_thresh):
+            print("No sprouts and no space for new ones. Additional jellyfish growth.")
+            R_rim1 = (self.sprouting_thresh+1e-4) / max(distances_ang)
+            beta = R_rim1 / R_rim0
+            out_growth[0] = [dt, (R_rim1 - R_rim0)/self.v_rim]
+            step = step + 1
+            self.radii, R_rim0, distances_ang, mid_pos_ang = extend_box_check_distances()
+            
         max_branch_id = len(network.branches) - 1
-        for i, theta in enumerate(mid_pos_ang[distances_ang*2*R_rim0>self.sprouting_thresh]):
-            theta = theta+np.random.rand()*0.05/R_rim0
+        for i, theta in enumerate(mid_pos_ang[distances_ang*R_rim0>=self.sprouting_thresh]):
+            theta = theta + np.random.uniform(low=-1, high=1)*0.1/R_rim0
             print(f"Initiating new sprout at theta={theta/np.pi*180:.2f} deg.")
             branch = Branch(
                     ID=max_branch_id+i+1,
@@ -89,7 +103,7 @@ class Jellyfish:
                                                R_rim0) ),
                     steps=np.array([step, step])
                 )
-            network.branches.append(branch)       
+            network.branches.append(branch)
             network.active_branches.append(branch)
             
             # place seed at the boundary

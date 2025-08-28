@@ -670,7 +670,7 @@ class FreeFEM:
                 tips[ind, 1] = branch.tip_angle() # angle with X axis
                 tips[ind, 2] = branch.points[-1, 0] 
                 tips[ind, 3] = branch.points[-1, 1]
-        inside_buildmesh = inside_buildmesh[:-1]
+        inside_buildmesh = inside_buildmesh[:-2]
 
         buildmesh = (
             textwrap.dedent(
@@ -682,9 +682,9 @@ class FreeFEM:
             )
             + self.__script_border_box
             + border_network
-            # + "\nplot({inside_buildmesh}, dim=2, wait=true);\n\n".format(
-                # inside_buildmesh=inside_buildmesh
-            # )
+            + "\nplot({inside_buildmesh}, dim=2, wait=true);\n\n".format(
+                inside_buildmesh=inside_buildmesh
+            )
             + "\nmesh Th = buildmesh({inside_buildmesh}, fixedborder=true);\n".format(
                 inside_buildmesh=inside_buildmesh
             )
@@ -761,12 +761,6 @@ class FreeFEM:
             script_name = f"script_{id(self)}_failed.edp"
             with open(script_name, "w") as edp_temp_file:
                 edp_temp_file.write(script)
-            # out_freefem = self.run_freefem_temp(script.replace(\
-            #                 "nvAroundTips.min < 250", \
-            #                 "nvAroundTips.min < 350")
-            #                                     )
-            # if out_freefem.returncode:
-            #     print("\nFreeFem++ didn't work with stronger mesh adaptation.\n")
             
         return out_freefem
 
@@ -944,7 +938,7 @@ class FreeFEM_ThickFingers:
         )
         
         # contours based on the thickened tree
-        box_ring, _, _, _, _, _, _ = \
+        box_ring, _, _, _, _ = \
             self.fingers_and_box_contours(network)
         self.script_border_box, self.script_inside_buildmesh_box = \
             self.prepare_script_box(network, box_ring)
@@ -1240,8 +1234,6 @@ class FreeFEM_ThickFingers:
     
     def fingers_and_box_contours(self, network):
         """ Prepares contours of the thickened tree using shapely library. """
-        border_contour = ""
-        inside_buildmesh = ""
         pts = []
         pts_in = [] # points inside subdomains with higher mobility
         tips_all = []; tips_active = [];
@@ -1310,25 +1302,27 @@ class FreeFEM_ThickFingers:
                 if mask.any():
                     contours_tree_bc[-1] = ~mask*888 + mask*b_label
         
-        return box_ring, contours_tree, contours_tree_bc, tips_active, pts_in, border_contour, inside_buildmesh
+        return box_ring, contours_tree, contours_tree_bc, tips_active, pts_in
     
     def prepare_script(self, network):
         """Return a full FreeFEM script with the `network` geometry."""
         # contours based on the thickened tree
-        box_ring, contours_tree, contours_tree_bc, tips, points_in, border_contour, inside_buildmesh = \
+        box_ring, contours_tree, contours_tree_bc, tips, points_in = \
             self.fingers_and_box_contours(network)
            
         self.script_border_box, self.script_inside_buildmesh_box = \
             self.prepare_script_box(network, box_ring)
                        
         # contours_tree to border
+        border_contour = ""
+        inside_buildmesh = ""
         for i, points in enumerate(contours_tree):
             # points = np.flip(points0, axis=0)
             border_contour, inside_buildmesh = \
                 prepare_contour_list(border_contour, inside_buildmesh, i, points, \
                                      label=contours_tree_bc[i], border_name="contour" )
         
-        inside_buildmesh = self.script_inside_buildmesh_box + inside_buildmesh[:-1]
+        inside_buildmesh = self.script_inside_buildmesh_box + inside_buildmesh[:-2]
         
         buildmesh = (
             textwrap.dedent(

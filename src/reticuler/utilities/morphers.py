@@ -188,6 +188,8 @@ class Leaf:
         max_separation=0.05
         
         points = np.array([x, y]).T
+        if network.box.initial_condition==7: # Circular case
+            points = np.vstack((points, points[0]))
         processed_points = [points[0]]
         for i in range(1, len(points)):
             last_kept_point = processed_points[-1]
@@ -208,9 +210,7 @@ class Leaf:
             # If the last two points are too close, replace the penultimate point with the last
             elif i==len(points)-1:
                 processed_points[-1] = current_point
-        # Circular case - check the distance between the first and last point                
-        if network.box.initial_condition==7 and \
-          np.linalg.norm(processed_points[-1] - processed_points[0])<min_separation:
+        if network.box.initial_condition==7: # Circular case
             processed_points.pop(-1)
                     
         processed_points = np.array(processed_points)

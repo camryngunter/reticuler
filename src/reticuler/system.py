@@ -13,6 +13,7 @@ import datetime
 import time
 import copy
 import json
+import pickle
 import importlib.metadata
 
 import matplotlib.pyplot as plt
@@ -162,21 +163,25 @@ class System:
                         }
                     }
             elif type(self.morpher).__name__ == "Leaf":
-                export_box_history = {}
-                for i, bx in enumerate(self.morpher.box_history):
-                    box_dict = { f"box{i}": {
-                        "points": bx.points,
-                        "connections_and_bc": bx.connections_bc(),
-                        "seeds_connectivity": bx.seeds_connectivity,
-                        }
-                    }
-                    export_box_history = export_box_history | box_dict
+                # export_box_history = {}
+                # for i, bx in enumerate(self.morpher.box_history):
+                #     box_dict = { f"box{i}": {
+                #         "points": bx.points,
+                #         "connections_and_bc": bx.connections_bc(),
+                #         "seeds_connectivity": bx.seeds_connectivity,
+                #         "initial_condition": bx.initial_condition,
+                #         }
+                #     }
+                #     export_box_history = export_box_history | box_dict
                 
+                with open(self.exp_name + "_box_history.pkl", "wb") as f:
+                    pickle.dump(self.morpher.box_history, f)
+
                 export_morpher = {
                     "morpher": {
                         "type": type(self.morpher).__name__,
                         "v_rim": self.morpher.v_rim,
-                        "box_history": export_box_history
+                        "box_history": "pickled" # export_box_history
                         }
                     }                
         else:
@@ -204,6 +209,7 @@ class System:
                 "description": "Geometry of the system: box and branches.",
                 "box": {
                     "description": "Border geometry. Points should be in a counterclokwise order. Connections and boundary conditions (BC) -> 1st/2nd columns: point IDs, 3rd column: BC. Seeds connectivity -> 1st column: index on border, 2nd column: branch ID.",
+                    "initial_condition": self.network.box.initial_condition,
                     "points": self.network.box.points,
                     "connections_and_bc": self.network.box.connections_bc(),
                     "seeds_connectivity": self.network.box.seeds_connectivity,
@@ -260,11 +266,17 @@ class System:
         # Box
         json_box = json_load["network"]["box"]
         connections_bc = np.asarray(json_box["connections_and_bc"], dtype=int)
+        # !!!
+        try:
+            initial_condition = int(json_box["initial_condition"])
+        except:
+            initial_condition = None
         box = Box(
             points=np.asarray(json_box["points"]),
             connections=connections_bc[:, :2],
             boundary_conditions=connections_bc[:, 2],
             seeds_connectivity=np.asarray(json_box["seeds_connectivity"], dtype=int),
+            initial_condition=initial_condition,
         )
         # Network
         branch_connectivity = np.asarray(
@@ -309,17 +321,26 @@ class System:
                                     v_rim=json_morpher["v_rim"],
                                     )
                 elif json_morpher["type"] == "Leaf":
-                    boxes = []
-                    for box_ind in json_morpher["box_history"]:
-                        json_box = json_morpher["box_history"][box_ind]
-                        connections_bc = np.asarray(json_box["connections_and_bc"], dtype=int)
-                        box = Box(
-                            points=np.asarray(json_box["points"]),
-                            connections=connections_bc[:, :2],
-                            boundary_conditions=connections_bc[:, 2],
-                            seeds_connectivity=np.asarray(json_box["seeds_connectivity"], dtype=int),
-                        )  
-                        boxes.append(box.copy())
+                    try:
+                        with open(input_file + "_box_history.pkl", "rb") as f:
+                            boxes = pickle.load(f)
+                    except Exception as error:
+                        print(type(error).__name__, ": ", error)
+                        print("Importing box history the old way.")
+                        boxes = []
+                        for box_ind in json_morpher["box_history"]:
+                            json_box = json_morpher["box_history"][box_ind]
+                            connections_bc = np.asarray(json_box["connections_and_bc"], dtype=int)
+                            # !!!
+                            initial_condition = None                          
+                            box = Box(
+                                points=np.asarray(json_box["points"]),
+                                connections=connections_bc[:, :2],
+                                boundary_conditions=connections_bc[:, 2],
+                                seeds_connectivity=np.asarray(json_box["seeds_connectivity"], dtype=int),
+                                initial_condition=initial_condition,
+                            )  
+                            boxes.append(box.copy())
                     morpher = morphers.Leaf(
                                     v_rim=json_morpher["v_rim"],
                                     box_history=boxes,
@@ -432,10 +453,14 @@ class System:
             if not self.growth_gauges[0] % self.dump_every:
                 self.export_json()
                 if ax is not None:
-                    ax.clear()
-                    graphics.plot_tree(ax, self)
+                    # ax.clear()
+                    # graphics.plot_tree(ax, self)
+                    ax.plot(*self.network.box.points.T, \
+                            '.-', ms=2, \
+                            color="tab:red", lw=0.5, alpha=0.5)
+                    ax.plot(*self.network.branches[0].points.T, color="darkred", alpha=0.5)
                     plt.pause(0.01)
-
+                    
         self.export_json()
         print("\n End of the simulation")
 

@@ -42,7 +42,7 @@ def inNd(a, b, assume_unique=False):
     return np.in1d(a, b, assume_unique)
 
 def arr2str(arr):
-    return np.array2string(arr, separator=",", precision=12,max_line_width=np.inf,threshold=np.inf).replace("\n", "")
+    return np.array2string(arr, separator=",", formatter={'float_kind': lambda x: f"{x:.6e}"},max_line_width=np.inf,threshold=np.inf).replace("\n", "")
 
 def array_from_string(out_string, key):
     ind_0 = out_string.find(key.encode("ascii"))+len(key)
@@ -755,10 +755,10 @@ class FreeFEM:
                 os.unlink(tmp_file.name)
                 
         if out_freefem.returncode:
-            print("\nFreeFem++ failed in the first try.\n")
+            script_name = f"script_{id(self)}_{datetime.now().strftime("%Y_%m_%d-%p%I_%M_%S")}_failed.edp"
+            print(f"\nFreeFem++ failed... Saving the script: {script_name}\n")
             print("stdout:", out_freefem.stdout.decode())
             print("stderr:", out_freefem.stderr.decode())
-            script_name = f"script_{id(self)}_failed.edp"
             with open(script_name, "w") as edp_temp_file:
                 edp_temp_file.write(script)
             
@@ -783,20 +783,15 @@ class FreeFEM:
         script = self.prepare_script(network)
         
         out_freefem = self.run_freefem(script, self.is_script_saved)
-        
         if out_freefem.returncode:
-            print("\nFreeFem++ failed in the first try.\n")
-            print("stdout:", out_freefem.stdout.decode())
-            print("stderr:", out_freefem.stderr.decode())
-            script_name = f"script_{id(self)}_failed.edp"
-            with open(script_name, "w") as edp_temp_file:
-                edp_temp_file.write(script)
-            # out_freefem = self.run_freefem_temp(script.replace(\
-            #                 "nvAroundTips.min < 250", \
-            #                 "nvAroundTips.min < 350")
-            #                                     )
-            # if out_freefem.returncode:
-            #     print("\nFreeFem++ didn't work with stronger mesh adaptation.\n")
+            print("\nTrying again...\n")
+            # script_perturbed = script.replace("nvAroundTips.min < 250","nvAroundTips.min < 350")
+            lookfor = "boxN(0:1023)=["
+            ind = script.find(lookfor) + len(lookfor)
+            ind2 = ind + script[ind:].find(",")
+            boxN_0 = script[ind:ind2]
+            script_perturbed = script.replace(lookfor+boxN_0,lookfor+str(int(boxN_0)+1))
+            out_freefem = self.run_freefem(script_perturbed, self.is_script_saved)
             
         ai_coeffs_flat = array_from_string(out_freefem.stdout, "kopytko")
         self.flux_info = ai_coeffs_flat.reshape(len(ai_coeffs_flat) // 3, 3)
@@ -1428,11 +1423,6 @@ class FreeFEM_ThickFingers:
         script = self.prepare_script(network)
         
         out_freefem = FreeFEM.run_freefem(self, script, self.is_script_saved)
-        # print(out_freefem.stdout)
-
-        if out_freefem.returncode:
-            print("\nFreeFem++ failed in the first try.\n")    
-            print(out_freefem.stdout)
         
         # flux_info calculated in FreeFem:
         # flux_info = np.fromstring(out_freefem.stdout[out_freefem.stdout.find(b"kopytko")+7:], sep=",")

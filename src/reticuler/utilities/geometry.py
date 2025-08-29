@@ -391,9 +391,11 @@ class Box:
             )
             # circular rim
             n_points_rim = 48 # n_points_rim % 8 == 0
+            rim_pts_angs = np.linspace(-angular_width/2,0.99999*angular_width/2, n_points_rim+1)
             box.__add_points(
-                cyl2cart(R_rim, np.linspace(-angular_width/2,0.99999*angular_width/2, n_points_rim+1), R_rim)
+                cyl2cart(R_rim, rim_pts_angs, R_rim)
             )
+            
             
             # seeds indices
             n0_rim = n_points_stomach+2
@@ -474,11 +476,13 @@ class Box:
                     )
                 branches.append(branch)       
                 active_branches.append(branch)
-                box.points[box.seeds_connectivity[3+i, 0]] = branch.points[0]
+                # ind = box.seeds_connectivity[3+i, 0]
+                ind = n_points_rim+2 + np.argmin(np.abs(rim_pts_angs - (theta+eps[i])))
+                box.points[ind] = branch.points[0]
                 
             branch_connectivity = np.array([[0,-1],[1,0],[2,0]])
         
-        # Circle or slice
+        # Leaf: circle or slice
         elif initial_condition == 7 or initial_condition == 9:
             options_construct = {
                 "seeds_phi": [0],

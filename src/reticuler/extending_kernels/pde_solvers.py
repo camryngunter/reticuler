@@ -755,7 +755,7 @@ class FreeFEM:
                 os.unlink(tmp_file.name)
                 
         if out_freefem.returncode:
-            script_name = f"script_{id(self)}_{datetime.now().strftime("%Y_%m_%d-%p%I_%M_%S")}_failed.edp"
+            script_name = f"script_{id(self)}_{datetime.now().strftime('%Y_%m_%d-%p%I_%M_%S')}_failed.edp"
             print(f"\nFreeFem++ failed... Saving the script: {script_name}\n")
             print("stdout:", out_freefem.stdout.decode())
             print("stderr:", out_freefem.stderr.decode())

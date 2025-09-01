@@ -17,6 +17,8 @@ class Jellyfish:
     ----------
     sprouting_thresh : float, default 1.5
         Threshold for inserting new sprouts [mm].
+    sprouting_stochastic_factor : float, default 0.2
+        Factor to randomize the position of new sprouts [mm].
     radii : array, default [0]
         How radius changed in time (corresponds to system.timestamps).       
     timescale : float, default 1
@@ -33,12 +35,15 @@ class Jellyfish:
         radii=None,
         timescale=1,
         v_rim=1.4,
+        sprouting_thresh=1.5,
+        sprouting_stochastic_factor=0.25,
     ):
         """Initialize Jellyfish.
 
         Parameters
         ----------
         sprouting_thresh : float, default 1.5
+        sprouting_stochastic_factor : float, default 0.2
         radii : array, default [0]
         timescale : float, default 1
         v_rim : float, default 1.4
@@ -48,7 +53,8 @@ class Jellyfish:
         None.
 
         """
-        self.sprouting_thresh = 1.5
+        self.sprouting_thresh = sprouting_thresh
+        self.sprouting_stochastic_factor = sprouting_stochastic_factor
         self.radii = np.array([0]) if radii is None else radii
         self.timescale = timescale
         self.v_rim = v_rim
@@ -94,7 +100,7 @@ class Jellyfish:
             
         max_branch_id = len(network.branches) - 1
         for i, theta in enumerate(mid_pos_ang[distances_ang*R_rim0>=self.sprouting_thresh]):
-            theta = theta + np.random.uniform(low=-1, high=1)*0.1/R_rim0
+            theta = theta + np.random.uniform(low=-1, high=1)*self.sprouting_stochastic_factor/R_rim0
             print(f"Initiating new sprout at theta={theta/np.pi*180:.2f} deg.")
             branch = Branch(
                     ID=max_branch_id+i+1,

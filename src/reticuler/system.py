@@ -160,6 +160,8 @@ class System:
                         "radii": self.morpher.radii,
                         "timescale": self.morpher.timescale,
                         "v_rim": self.morpher.v_rim,
+                        "sprouting_thresh": self.morpher.sprouting_thresh,
+                        "sprouting_stochastic_factor": self.morpher.sprouting_stochastic_factor,
                         }
                     }
             elif type(self.morpher).__name__ == "Leaf":
@@ -319,6 +321,8 @@ class System:
                                     radii=json_morpher["radii"],
                                     timescale=json_morpher["timescale"],
                                     v_rim=json_morpher["v_rim"],
+                                    sprouting_thresh=json_morpher["sprouting_thresh"],
+                                    sprouting_stochastic_factor=json_morpher["sprouting_stochastic_factor"],
                                     )
                 elif json_morpher["type"] == "Leaf":
                     try:

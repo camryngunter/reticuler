@@ -39,7 +39,7 @@ def asvoid(arr):
 def inNd(a, b, assume_unique=False):
     a = asvoid(a)
     b = asvoid(b)
-    return np.in1d(a, b, assume_unique)
+    return np.isin(a, b, assume_unique)
 
 def arr2str(arr):
     return np.array2string(arr, separator=",", formatter={'float_kind': lambda x: f"{x:.6e}"},max_line_width=np.inf,threshold=np.inf).replace("\n", "")
@@ -1424,6 +1424,17 @@ class FreeFEM_ThickFingers:
         
         out_freefem = FreeFEM.run_freefem(self, script, self.is_script_saved)
         
+        if out_freefem.returncode or "nan" in out_freefem.stdout.decode():
+            print("\nError or nan detected...\n")
+            print(out_freefem.stdout.decode())
+            print("\nTrying again...\n")
+            lookfor = "boxN(0:1023)=["
+            ind = script.find(lookfor) + len(lookfor)
+            ind2 = ind + script[ind:].find(",")
+            boxN_0 = script[ind:ind2]
+            script_perturbed = script.replace(lookfor+boxN_0,lookfor+str(int(boxN_0)+1))
+            out_freefem = FreeFEM.run_freefem(self, script_perturbed, self.is_script_saved)
+
         # flux_info calculated in FreeFem:
         # flux_info = np.fromstring(out_freefem.stdout[out_freefem.stdout.find(b"kopytko")+7:], sep=",")
         # self.flux_info = flux_info.reshape(len(flux_info) // 2, 2)
@@ -1434,7 +1445,7 @@ class FreeFEM_ThickFingers:
         for i, branch in enumerate(network.active_branches):
             tip_label = 1000+branch.ID
             angles.append(array_from_string(out_freefem.stdout, f"angles{tip_label}"))
-            fluxes.append(array_from_string(out_freefem.stdout, f"fluxes{tip_label}")) 
+            fluxes.append(array_from_string(out_freefem.stdout, f"fluxes{tip_label}"))
             ind_cut = np.where(np.diff(angles[-1])<0)[0]
             if ind_cut.size:
                 angles[-1][ind_cut[0]+1:] = angles[-1][ind_cut[0]+1:] + 2*np.pi
@@ -1457,6 +1468,6 @@ class FreeFEM_ThickFingers:
             ang_max = xx[np.argmax(smoothed)]
             self.flux_info[i,1] = (ang_max + np.pi) % (2*np.pi) - np.pi
             
-        # with np.printoptions(formatter={"float": "{:.6g}".format}):
-        #     # print("flux_info: \n", self.flux_info)
-        #     print("angles: \n", self.flux_info[...,1]*180/np.pi)
+        with np.printoptions(formatter={"float": "{:.6g}".format}):
+            print("flux_info: \n", self.flux_info[...,0])
+            print("angles: \n", self.flux_info[...,1]*180/np.pi)

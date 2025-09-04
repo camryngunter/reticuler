@@ -18,10 +18,12 @@ import importlib.metadata
 
 import matplotlib.pyplot as plt
 
-from reticuler.utilities.misc import NumpyEncoder
-from reticuler.utilities.geometry import Branch, Box, Network
-from reticuler.utilities import morphers
-from reticuler.extending_kernels import extenders, pde_solvers
+from reticuler import NumpyEncoder
+from reticuler import Branch, Box, Network
+from reticuler import ModifiedEulerMethod
+from reticuler import FreeFEM_ThinFingers, FreeFEM_ThinFingers_Boundary, FreeFEM_ThickFingers, FreeFEM_ThickFingers_Elasticity
+from reticuler import Jellyfish, Leaf
+
 from reticuler.user_interface import graphics
 
 class System:
@@ -121,7 +123,6 @@ class System:
         }
 
         if type(self.extender).__name__ == "ModifiedEulerMethod":
-            # if type(self.extender.pde_solver).__name__ == "FreeFEM":
             export_solver = {
                 "type": type(self.extender.pde_solver).__name__,
                 "description": "",
@@ -130,18 +131,25 @@ class System:
                 "eta": self.extender.pde_solver.eta,
                 "ds": self.extender.pde_solver.ds,
             }
-            if type(self.extender.pde_solver).__name__ == "FreeFEM":
+            if type(self.extender.pde_solver).__name__ == "FreeFEM_ThinFingers" or \
+                type(self.extender.pde_solver).__name__ == "FreeFEM_ThinFingers_Boundary":
                 export_solver["description"] = "Equation legend: 0-Laplace, 1-Poisson. Bifurcation legend: 0-no bifurcations, 1-a1, 2-a3/a1, 3-random."
                 export_solver["bifurcation_type"] = self.extender.pde_solver.bifurcation_type
                 export_solver["bifurcation_thresh"] = self.extender.pde_solver.bifurcation_thresh
                 export_solver["bifurcation_angle"] = self.extender.pde_solver.bifurcation_angle
                 export_solver["inflow_thresh"] = self.extender.pde_solver.inflow_thresh
                 export_solver["distance_from_bif_thresh"] = self.extender.pde_solver.distance_from_bif_thresh
-            if type(self.extender.pde_solver).__name__ == "FreeFEM_ThickFingers":
-                export_solver["description"] = "Equation legend: 0-Laplace, 1-Poisson, 2-elasticity."
+            elif type(self.extender.pde_solver).__name__ == "FreeFEM_ThickFingers":
+                export_solver["description"] = "Equation legend: 0-Laplace, 1-Poisson."
                 export_solver["finger_width"] = self.extender.pde_solver.finger_width
                 export_solver["mobility_ratio"] = self.extender.pde_solver.mobility_ratio
-                
+            elif type(self.extender.pde_solver).__name__ == "FreeFEM_ThickFingers_Elasticity":
+                export_solver["description"] = "Equation legend: 2-elasticity."
+                export_solver["finger_width"] = self.extender.pde_solver.finger_width
+                export_solver["youngs_modulus_inside"] = self.extender.pde_solver.youngs_modulus_inside
+                export_solver["youngs_modulus_outside"] = self.extender.pde_solver.youngs_modulus_outside
+                export_solver["poissons_ratio_inside"] = self.extender.pde_solver.poissons_ratio_inside
+                export_solver["poissons_ratio_outside"] = self.extender.pde_solver.poissons_ratio_outside
                 
             export_extender = {
                 "extender": {
@@ -252,25 +260,31 @@ class System:
         for i in reversed(list(json_load["network"]["branches"].keys())):
             json_branch = json_load["network"]["branches"][i]
             points_steps = np.asarray(json_branch["points_and_steps"])
-            branch = Branch(
-                ID=json_branch["ID"],
-                BC=json_branch["BC"],
-                points=points_steps[:, :2],
-                steps=np.array(points_steps[:, 2], dtype=int),
-            )
+            # !!! Backward compatibility
+            try:
+                branch = Branch(
+                    ID=json_branch["ID"],
+                    points=points_steps[:, :2],
+                    steps=np.array(points_steps[:, 2], dtype=int),
+                    BC=json_branch["BC"],
+                )
+            except:
+                branch = Branch(
+                    ID=json_branch["ID"],
+                    points=points_steps[:, :2],
+                    steps=np.array(points_steps[:, 2], dtype=int),
+                )
 
             branches.append(branch)
             if json_branch["state"] == "active" or json_branch["state"] == "sleeping":
                 active_branches.append(branch)
-            # elif json_branch["state"] == "sleeping":
-            #     sleeping_branches.append(branch)
 
         # Box
         json_box = json_load["network"]["box"]
         connections_bc = np.asarray(json_box["connections_and_bc"], dtype=int)
-        # !!!
+        # !!! Backward compatibility
         try:
-            initial_condition = int(json_box["initial_condition"])
+            initial_condition = json_box["initial_condition"]
         except:
             initial_condition = None
         box = Box(
@@ -316,15 +330,23 @@ class System:
             # Morpher
             if "morpher" in json_load:
                 json_morpher = json_load["morpher"]
+                # !!! Backward compatibility
+                try:
+                    sprouting_thresh=json_morpher["sprouting_thresh"]
+                    sprouting_stochastic_factor=json_morpher["sprouting_stochastic_factor"]
+                except Exception as error:
+                    sprouting_thresh = 1.5
+                    sprouting_stochastic_factor = 0.2
                 if json_morpher["type"] == "Jellyfish":  
-                    morpher = morphers.Jellyfish(
+                    morpher = Jellyfish(
                                     radii=json_morpher["radii"],
                                     timescale=json_morpher["timescale"],
                                     v_rim=json_morpher["v_rim"],
-                                    sprouting_thresh=json_morpher["sprouting_thresh"],
-                                    sprouting_stochastic_factor=json_morpher["sprouting_stochastic_factor"],
+                                    sprouting_thresh=sprouting_thresh,
+                                    sprouting_stochastic_factor=sprouting_stochastic_factor,
                                     )
                 elif json_morpher["type"] == "Leaf":
+                    # !!! Backward compatibility
                     try:
                         with open(input_file + "_box_history.pkl", "rb") as f:
                             boxes = pickle.load(f)
@@ -335,8 +357,7 @@ class System:
                         for box_ind in json_morpher["box_history"]:
                             json_box = json_morpher["box_history"][box_ind]
                             connections_bc = np.asarray(json_box["connections_and_bc"], dtype=int)
-                            # !!!
-                            initial_condition = None                          
+                            initial_condition = None
                             box = Box(
                                 points=np.asarray(json_box["points"]),
                                 connections=connections_bc[:, :2],
@@ -345,7 +366,7 @@ class System:
                                 initial_condition=initial_condition,
                             )  
                             boxes.append(box.copy())
-                    morpher = morphers.Leaf(
+                    morpher = Leaf(
                                     v_rim=json_morpher["v_rim"],
                                     box_history=boxes,
                                     )
@@ -358,16 +379,21 @@ class System:
             if json_extender["type"] == "ModifiedEulerMethod":  
                 # Solver
                 json_solver = json_load["extender"]["pde_solver"]
-                if json_solver["type"] == "FreeFEM":
-                    pde_solver_class = pde_solvers.FreeFEM
+                # !!! Backward compatibility
+                if json_solver["type"] == "FreeFEM" or json_solver["type"] == "FreeFEM_ThinFingers":
+                    pde_solver_class = FreeFEM_ThinFingers
+                elif json_solver["type"] == "FreeFEM_ThinFingers_Boundary":
+                    pde_solver_class = FreeFEM_ThinFingers_Boundary
                 elif json_solver["type"] == "FreeFEM_ThickFingers":
-                    pde_solver_class = pde_solvers.FreeFEM_ThickFingers
+                    pde_solver_class = FreeFEM_ThickFingers
+                elif json_solver["type"] == "FreeFEM_ThickFingers_Elasticity":
+                    pde_solver_class = FreeFEM_ThickFingers_Elasticity
                     
                 json_solver.pop("type")
                 json_solver.pop("description")
                 pde_solver = pde_solver_class(network, **json_solver)
                 # Extender
-                extender = extenders.ModifiedEulerMethod(
+                extender = ModifiedEulerMethod(
                     pde_solver=pde_solver,
                     is_reconnecting=json_extender["is_reconnecting"],
                     max_approximation_step=json_extender["max_approximation_step"],
@@ -387,8 +413,8 @@ class System:
         except Exception as error:
             print(type(error).__name__, ": ", error)
             print("!WARNING! Extender/PDE solver/morpher not imported.")
-            pde_solver = pde_solvers.FreeFEM(network)
-            extender = extenders.ModifiedEulerMethod(
+            pde_solver = FreeFEM_ThinFingers(network)
+            extender = ModifiedEulerMethod(
                 pde_solver=pde_solver,)
             system = cls(
                 network=network,

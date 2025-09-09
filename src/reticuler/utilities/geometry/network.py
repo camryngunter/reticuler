@@ -88,7 +88,7 @@ class Network:
     def reconnect(self, pde_solver, step):
         """Find potential anastomoses and reconnect."""       
         
-        if type(pde_solver).__name__ == "FreeFEM_ThickFingers":
+        if "FreeFEM_ThickFingers" in type(pde_solver).__name__:
             reconnection_distance = pde_solver.finger_width + 5e-3
             reconnection_distance_bt = pde_solver.finger_width/2 + 5e-3 # 0.05*pde_solver.ds
         else:
@@ -199,7 +199,7 @@ class Network:
                 if min_distance < reconnection_distance:
                     did_reconnect = True
                     # to make more realistic reconnections for thick fingers we stretch tip further
-                    if type(pde_solver).__name__ == "FreeFEM_ThickFingers":
+                    if "FreeFEM_ThickFingers" in type(pde_solver).__name__:
                         dr1 = branch.points[-1] - branch.points[-2]
                         dr1 = dr1/np.linalg.norm(dr1) 
                         dr2 = reconnection_pt - branch.points[-1]
@@ -217,7 +217,7 @@ class Network:
                     branch2_id = int(all_segments_branches[mask][ind_min,0])
                     print("! Branch {ID} reconnected to branch {ID2} !".format(ID=branch.ID, ID2=branch2_id))
                     
-                    if type(pde_solver).__name__ == "FreeFEM_ThickFingers":
+                    if "FreeFEM_ThickFingers" in type(pde_solver).__name__:
                         branch.points = np.vstack( (branch.points, [tip]) )
                         branch.steps = np.append(branch.steps, [step+1])
                     branch.points = np.vstack( (branch.points, [reconnection_pt]) )

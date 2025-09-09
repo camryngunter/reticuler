@@ -20,9 +20,9 @@ import matplotlib.pyplot as plt
 
 from reticuler import NumpyEncoder
 from reticuler import Branch, Box, Network
-from reticuler import ModifiedEulerMethod
-from reticuler import FreeFEM_ThinFingers, FreeFEM_ThinFingers_Boundary, FreeFEM_ThickFingers, FreeFEM_ThickFingers_Elasticity
-from reticuler import Jellyfish, Leaf
+from reticuler.extending_kernels import extenders
+from reticuler.extending_kernels import pde_solvers
+from reticuler.utilities import morphers
 
 from reticuler.user_interface import graphics
 
@@ -83,9 +83,6 @@ class System:
         self.network = network
         self.extender = extender
         self.morpher = morpher
-        
-        if type(self.morpher).__name__ == "Leaf":
-            self.extender.pde_solver.update_scripts_leaf()
 
         # Growth limits:
         # 0: max step, 1: max height
@@ -131,8 +128,7 @@ class System:
                 "eta": self.extender.pde_solver.eta,
                 "ds": self.extender.pde_solver.ds,
             }
-            if type(self.extender.pde_solver).__name__ == "FreeFEM_ThinFingers" or \
-                type(self.extender.pde_solver).__name__ == "FreeFEM_ThinFingers_Boundary":
+            if "FreeFEM_ThinFingers" in type(self.extender.pde_solver).__name__:
                 export_solver["description"] = "Equation legend: 0-Laplace, 1-Poisson. Bifurcation legend: 0-no bifurcations, 1-a1, 2-a3/a1, 3-random."
                 export_solver["bifurcation_type"] = self.extender.pde_solver.bifurcation_type
                 export_solver["bifurcation_thresh"] = self.extender.pde_solver.bifurcation_thresh
@@ -330,15 +326,15 @@ class System:
             # Morpher
             if "morpher" in json_load:
                 json_morpher = json_load["morpher"]
-                # !!! Backward compatibility
-                try:
-                    sprouting_thresh=json_morpher["sprouting_thresh"]
-                    sprouting_stochastic_factor=json_morpher["sprouting_stochastic_factor"]
-                except Exception as error:
-                    sprouting_thresh = 1.5
-                    sprouting_stochastic_factor = 0.2
-                if json_morpher["type"] == "Jellyfish":  
-                    morpher = Jellyfish(
+                if json_morpher["type"] == "Jellyfish":
+                    # !!! Backward compatibility
+                    try:
+                        sprouting_thresh=json_morpher["sprouting_thresh"]
+                        sprouting_stochastic_factor=json_morpher["sprouting_stochastic_factor"]
+                    except Exception as error:
+                        sprouting_thresh = 1.5
+                        sprouting_stochastic_factor = 0.2                    
+                    morpher = morphers.Jellyfish(
                                     radii=json_morpher["radii"],
                                     timescale=json_morpher["timescale"],
                                     v_rim=json_morpher["v_rim"],
@@ -366,7 +362,7 @@ class System:
                                 initial_condition=initial_condition,
                             )  
                             boxes.append(box.copy())
-                    morpher = Leaf(
+                    morpher = morphers.Leaf(
                                     v_rim=json_morpher["v_rim"],
                                     box_history=boxes,
                                     )
@@ -380,20 +376,20 @@ class System:
                 # Solver
                 json_solver = json_load["extender"]["pde_solver"]
                 # !!! Backward compatibility
-                if json_solver["type"] == "FreeFEM" or json_solver["type"] == "FreeFEM_ThinFingers":
-                    pde_solver_class = FreeFEM_ThinFingers
-                elif json_solver["type"] == "FreeFEM_ThinFingers_Boundary":
-                    pde_solver_class = FreeFEM_ThinFingers_Boundary
+                if not json_morpher["type"] == "Leaf" and (json_solver["type"] == "FreeFEM" or json_solver["type"] == "FreeFEM_ThinFingers"):
+                    pde_solver_class = pde_solvers.FreeFEM_ThinFingers
+                elif json_solver["type"] == "FreeFEM_ThinFingers_Boundary" or json_morpher["type"] == "Leaf":
+                    pde_solver_class = pde_solvers.FreeFEM_ThinFingers_Boundary
                 elif json_solver["type"] == "FreeFEM_ThickFingers":
-                    pde_solver_class = FreeFEM_ThickFingers
+                    pde_solver_class = pde_solvers.FreeFEM_ThickFingers
                 elif json_solver["type"] == "FreeFEM_ThickFingers_Elasticity":
-                    pde_solver_class = FreeFEM_ThickFingers_Elasticity
+                    pde_solver_class = pde_solvers.FreeFEM_ThickFingers_Elasticity
                     
                 json_solver.pop("type")
                 json_solver.pop("description")
                 pde_solver = pde_solver_class(network, **json_solver)
                 # Extender
-                extender = ModifiedEulerMethod(
+                extender = extenders.ModifiedEulerMethod(
                     pde_solver=pde_solver,
                     is_reconnecting=json_extender["is_reconnecting"],
                     max_approximation_step=json_extender["max_approximation_step"],
@@ -413,8 +409,8 @@ class System:
         except Exception as error:
             print(type(error).__name__, ": ", error)
             print("!WARNING! Extender/PDE solver/morpher not imported.")
-            pde_solver = FreeFEM_ThinFingers(network)
-            extender = ModifiedEulerMethod(
+            pde_solver = pde_solvers.FreeFEM_ThinFingers(network)
+            extender = extenders.ModifiedEulerMethod(
                 pde_solver=pde_solver,)
             system = cls(
                 network=network,

@@ -30,7 +30,7 @@ def main():
         metavar="file_name",
         help=textwrap.dedent(
             """\
-                            File to export. If None the same as input+`.edp`.
+                            File to export. If None the same as input+``.edp``.
                             default = None """
         ),
         default=None,

@@ -65,7 +65,7 @@ class ModifiedEulerMethod:
             An object of class Network.
         is_dr_normalized : bool, default True
             A boolean condition if the Backward Evolution Algorithm is off.
-            If False `dt`=`self.ds`.
+            If False ``dt``=``self.ds``.
     
         Returns
         -------
@@ -84,7 +84,7 @@ class ModifiedEulerMethod:
         dt = dt_0
         
         # moving network tips
-        network.move_tips(self, step=step)
+        network.move_tips(step=step)
         network0 = network.copy()
     
         did_reconnect = False

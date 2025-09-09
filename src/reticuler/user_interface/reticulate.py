@@ -50,7 +50,7 @@ def main():
         help=textwrap.dedent(
             """\
             File to export. If we import a file and leave this as default, 
-            `system.exp_name` will be set to `input_file`.
+            ``system.exp_name`` will be set to ``input_file``.
             default = '' """
         ),
         default=[""],
@@ -67,7 +67,7 @@ def main():
             Optional growth parameters.
             
             Pass dictionary in a form (no spaces, 
-            backslash before quotes around `value`): 
+            backslash before quotes around ``value``): 
                 "{\"value\":key}"
             default = {} (keeps default values as listed below)
             
@@ -107,7 +107,7 @@ def main():
             Kwargs for Box construct method.
             
             Pass dictionary in a form (no spaces, 
-            backslash before quotes around `value`): 
+            backslash before quotes around ``value``): 
                 "{\"value\":key}"
             default = {} (keeps default values as listed below)
             
@@ -131,9 +131,9 @@ def main():
         help=textwrap.dedent(
             """\
             PDE solver
-            default = FreeFEM"""
+            default = FreeFEM_ThinFingers"""
         ),
-        default=["FreeFEM"],
+        default=["FreeFEM_ThinFingers"],
     )
     parser.add_argument(
         "--pde_solver_params",
@@ -145,26 +145,41 @@ def main():
             Optional parameters for solver.
             
             Pass dictionary in a form (no spaces, 
-            backslash before quotes around `value`): 
+            backslash before quotes around ``value``): 
                 "{\"value\":key}"
             default = {} (keeps default values as listed below)
             
             """
         )
-        + "1. FreeFEM\n"
+        + "1. FreeFEM_ThinFingers\n"
         + textwrap.dedent(
-            pde_solvers.FreeFEM.__doc__[
-                pde_solvers.FreeFEM.__doc__.find("equation") : \
-                    pde_solvers.FreeFEM.__doc__.find("References") - 2
+            pde_solvers.FreeFEM_ThinFingers.__doc__[
+                pde_solvers.FreeFEM_ThinFingers.__doc__.find("equation") : \
+                    pde_solvers.FreeFEM_ThinFingers.__doc__.find("References") - 2
             ]
         )
-        + "\n\n2. FreeFEM_ThickFingers\n"
+        + "\n\n\n2. FreeFEM_ThinFingers_Boundary\n"
+        + textwrap.dedent(
+            pde_solvers.FreeFEM_ThinFingers_Boundary.__doc__[
+                pde_solvers.FreeFEM_ThinFingers_Boundary.__doc__.find("equation") : \
+                    pde_solvers.FreeFEM_ThinFingers_Boundary.__doc__.find("References") - 2
+            ]
+        )
+        + "\n\n\n3. FreeFEM_ThickFingers\n"
         + textwrap.dedent(
             pde_solvers.FreeFEM_ThickFingers.__doc__[
                 pde_solvers.FreeFEM_ThickFingers.__doc__.find("equation") : \
                     pde_solvers.FreeFEM_ThickFingers.__doc__.find("References") - 2
             ]
-        ),
+        )
+        + "\n\n\n4. FreeFEM_ThickFingers_Elasticity\n"
+        + textwrap.dedent(
+            pde_solvers.FreeFEM_ThickFingers_Elasticity.__doc__[
+                pde_solvers.FreeFEM_ThickFingers_Elasticity.__doc__.find("equation") : \
+                    pde_solvers.FreeFEM_ThickFingers_Elasticity.__doc__.find("References") - 2
+            ]
+        )
+        ,
         default=[{}],
     )
 
@@ -191,7 +206,7 @@ def main():
             Optional parameters for extender.
             
             Pass dictionary in a form (no spaces, 
-            backslash before quotes around `value`): 
+            backslash before quotes around ``value``): 
                 "{\"value\":key}"
             default = {} (keeps default values as listed below)
             
@@ -218,7 +233,7 @@ def main():
             Optional parameters for morpher.
             
             Pass dictionary in a form (no spaces, 
-            backslash before quotes around `value`): 
+            backslash before quotes around ``value``): 
                 "{\"value\":key}"
             default = {} (keeps default values as listed below)
             
@@ -274,7 +289,7 @@ def main():
                         **args.morpher_params[0]
                         )
         elif args.initial_condition[0]==6 or args.initial_condition[0]==7 or \
-          args.initial_condition[0]==8 or args.initial_condition[0]==8:
+          args.initial_condition[0]==8 or args.initial_condition[0]==9:
             morpher = morphers.Leaf(box_history=[box.copy()], **args.morpher_params[0])
         else:
             morpher = None
@@ -282,10 +297,14 @@ def main():
         # Extender
         if args.extender[0] == "ModifiedEulerMethod":
             # Solver
-            if args.pde_solver[0] == "FreeFEM":
-                pde_solver = pde_solvers.FreeFEM(network, **args.pde_solver_params[0])
+            if args.pde_solver[0] == "FreeFEM_ThinFingers":
+                pde_solver = pde_solvers.FreeFEM_ThinFingers(network, **args.pde_solver_params[0])
+            elif args.pde_solver[0] == "FreeFEM_ThinFingers_Boundary":
+                pde_solver = pde_solvers.FreeFEM_ThinFingers_Boundary(network, **args.pde_solver_params[0])                
             elif args.pde_solver[0] == "FreeFEM_ThickFingers":
-                pde_solver = pde_solvers.FreeFEM_ThickFingers(network, **args.pde_solver_params[0])  
+                pde_solver = pde_solvers.FreeFEM_ThickFingers(network, **args.pde_solver_params[0])
+            elif args.pde_solver[0] == "FreeFEM_ThickFingers_Elasticity":
+                pde_solver = pde_solvers.FreeFEM_ThickFingers_Elasticity(network, **args.pde_solver_params[0])                  
             
             extender = extenders.ModifiedEulerMethod(
                 pde_solver=pde_solver, **args.extender_params[0]

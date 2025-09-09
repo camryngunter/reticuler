@@ -26,8 +26,8 @@ class BackwardBranch:
     ID : int
         Branch ID.
     mother_ID : int
-        ID of the mother branch (branch from which `self` bifrucated). 
-        If `self` is connected to the border mother_ID=-1.
+        ID of the mother branch (branch from which ``self`` bifrucated). 
+        If ``self`` is connected to the border mother_ID=-1.
     points : array
         A 2-n array with xy coordinates of the points composing the branch.
         Chronological order of growth (tip is the last point).

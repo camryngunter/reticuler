@@ -28,7 +28,7 @@ class FreeFEM_ThickFingers(FreeFEM):
     mobility_ratio : float, default 1e4
         Diffusive case (equation=0, 1):
             Mobility ratio between the inside and outside of the fingers.
-            mobility_outside = 1, mobilty_inside = `mobility_ratio`
+            mobility_outside = 1, mobilty_inside = ``mobility_ratio``
         Elastic case (equation=2):
             Young's modulus of the canals (with E=100 for the tissue).
 
@@ -88,7 +88,7 @@ class FreeFEM_ThickFingers(FreeFEM):
         
         self.pbc = "" if network.box.boundary_conditions[0]!=2 else ", periodic=PBC"
         
-        self.__script_init = textwrap.dedent(
+        self._script_init = textwrap.dedent(
             """
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // INITIALISATION
@@ -129,10 +129,10 @@ class FreeFEM_ThickFingers(FreeFEM):
         # contours based on the thickened tree
         box_ring, _, _, _, _ = \
             self.fingers_and_box_contours(network)
-        self.script_border_box, self.script_inside_buildmesh_box = \
+        self._script_border_box, self._script_inside_buildmesh_box = \
             self.prepare_script_box(network, box_ring)
         
-        self.__script_regions = textwrap.dedent(
+        self._script_regions = textwrap.dedent(
             """
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // DEFINING REGIONS
@@ -140,7 +140,7 @@ class FreeFEM_ThickFingers(FreeFEM):
             """
             )
         
-        self.__script_problem = textwrap.dedent(
+        self._script_problem = textwrap.dedent(
             """
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // DEFINING PROBLEM AND EQUATION TO SOLVE
@@ -160,11 +160,11 @@ class FreeFEM_ThickFingers(FreeFEM):
         ).format(pbc=self.pbc, NEUMANN_1=NEUMANN_1, DIRICHLET_GLOB_FLUX=DIRICHLET_GLOB_FLUX, DIRICHLET_1=DIRICHLET_1, DIRICHLET_0=DIRICHLET_0)
 
         if self.equation==1:
-            self.__script_problem = self.__script_problem.replace(
+            self._script_problem = self._script_problem.replace(
                                             "// -int2d(Th)(v) // rain in domain", 
                                             "-int2d(Th)(v) // rain in domain")
 
-        self.__script_adaptmesh = textwrap.dedent(
+        self._script_adaptmesh = textwrap.dedent(
             """
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // ADAPTING THE MESH AND SOLVING FOR THE FIELD
@@ -213,7 +213,7 @@ class FreeFEM_ThickFingers(FreeFEM):
             """
         ).format(pbc=self.pbc)
 
-        self.__script_tip_integration = textwrap.dedent(
+        self._script_tip_integration = textwrap.dedent(
             """
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // CALCULATE FLUXES AND EXPORT RESULTS
@@ -402,7 +402,7 @@ class FreeFEM_ThickFingers(FreeFEM):
         #     plt.plot(*p, '.',ms=20, c='r')
         
         border_box, inside_buildmesh_box = \
-            super().prepare_script_box(self, 
+            super().prepare_script_box( 
                                         np.column_stack((connections_to_add, boundary_conditions)), \
                                         box_ring_pts, \
                                         points_per_unit_len=0.5)
@@ -420,7 +420,7 @@ class FreeFEM_ThickFingers(FreeFEM):
                 self.prepare_contour_list(border_contour, inside_buildmesh, i, points, \
                                     label=contours_tree_bc[i], border_name="contour" )
         
-        inside_buildmesh = self.script_inside_buildmesh_box + inside_buildmesh[:-2]
+        inside_buildmesh = self._script_inside_buildmesh_box + inside_buildmesh[:-2]
         
         buildmesh = (
             textwrap.dedent(
@@ -430,7 +430,7 @@ class FreeFEM_ThickFingers(FreeFEM):
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             """
             )
-            + self.script_border_box
+            + self._script_border_box
             + border_contour
             )
         if network.box.boundary_conditions[0]==2:
@@ -466,12 +466,12 @@ class FreeFEM_ThickFingers(FreeFEM):
         return buildmesh, tip_information    
 
     def prepare_script(self, network):
-        """Return a full FreeFEM script with the `network` geometry."""
+        """Return a full FreeFEM script with the ``network`` geometry."""
         # contours based on the thickened tree
         box_ring, contours_tree, contours_tree_bc, tips, points_in = \
             self.fingers_and_box_contours(network)
            
-        self.script_border_box, self.script_inside_buildmesh_box = \
+        self._script_border_box, self._script_inside_buildmesh_box = \
             self.prepare_script_box(network, box_ring)
 
         buildmesh, tip_information = self.prepare_script_network(network, \
@@ -479,7 +479,7 @@ class FreeFEM_ThickFingers(FreeFEM):
         
         # Regions 
         regions = ""
-        script_regions = self.__script_regions
+        script_regions = self._script_regions
         for i, p in enumerate(points_in):
             script_regions = script_regions + \
                 textwrap.dedent("""\nint indRegion{i} = Th({x}, {y}).region;""".format(
@@ -487,22 +487,22 @@ class FreeFEM_ThickFingers(FreeFEM):
             regions = regions + "region==indRegion{i} || ".format(i=i)
         
         #-> Diffusive specific
-            script_regions = script_regions + textwrap.dedent(
-                """
-                fespace Vh0(Th, P0{pbc});
-                Vh0 mobility = {mobilityOutside}*!({regions}) + {mobilityInside}*({regions});
-                plot(mobility, wait=true, cmm="mobility", fill=true, value=true);
-                """.format(mobilityOutside=1, mobilityInside=self.mobility_ratio, 
-                            regions = regions[:-4], pbc=self.pbc)
-                )
+        script_regions = script_regions + textwrap.dedent(
+            """
+            fespace Vh0(Th, P0{pbc});
+            Vh0 mobility = {mobilityOutside}*!({regions}) + {mobilityInside}*({regions});
+            plot(mobility, wait=true, cmm="mobility", fill=true, value=true);
+            """.format(mobilityOutside=1, mobilityInside=self.mobility_ratio, 
+                        regions = regions[:-4], pbc=self.pbc)
+            )
         #<-
         
         # whole script
-        script = self.__script_init + buildmesh + tip_information + script_regions
+        script = self._script_init + buildmesh + tip_information + script_regions
         #-> Diffusive specific
-        script = script + self.__script_problem
+        script = script + self._script_problem
         #<-
-        script = script + self.__script_adaptmesh + self.__script_tip_integration
+        script = script + self._script_adaptmesh + self._script_tip_integration
 
         return script
     
@@ -511,7 +511,7 @@ class FreeFEM_ThickFingers(FreeFEM):
         """Solve the PDE for the field around the network.
 
         Prepare a FreeFEM script, export it to a temporary file and run.
-        Then, import the results to `self.flux_info`.
+        Then, import the results to ``self.flux_info``.
 
         Parameters
         ----------
@@ -525,7 +525,7 @@ class FreeFEM_ThickFingers(FreeFEM):
         """
         script = self.prepare_script(network)
         
-        out_freefem = self.run_freefem(self, script)
+        out_freefem = self.run_freefem(script)
         
         if out_freefem.returncode or "nan" in out_freefem.stdout.decode():
             print("\n\nError or nan detected... Printing output:\n")
@@ -537,7 +537,7 @@ class FreeFEM_ThickFingers(FreeFEM):
             boxN = np.fromstring(script[ind:ind2], sep=",", dtype=int)
             boxN_1 = np.array2string(boxN*2, separator=',', max_line_width=1000)[1:-1]
             script_perturbed = script.replace(script[ind:ind2],boxN_1)
-            out_freefem = self.run_freefem(self, script_perturbed)
+            out_freefem = self.run_freefem(script_perturbed)
 
         # flux_info calculated in FreeFem:
         # flux_info = np.fromstring(out_freefem.stdout[out_freefem.stdout.find(b"kopytko")+7:], sep=",")
@@ -573,8 +573,8 @@ class FreeFEM_ThickFingers(FreeFEM):
             self.flux_info[i,1] = (ang_max + np.pi) % (2*np.pi) - np.pi
             
         with np.printoptions(formatter={"float": "{:.6g}".format}):
-            print("flux_info: \n", self.flux_info[...,0])
-            print("angles: \n", self.flux_info[...,1]*180/np.pi)
+            print("flux_info: ", self.flux_info[...,0])
+            print("angles: ", self.flux_info[...,1]*180/np.pi)
 
 class FreeFEM_ThickFingers_Elasticity(FreeFEM_ThickFingers):
     """A PDE solver based on the finite element method implemented in FreeFEM [Ref2]_.
@@ -646,7 +646,7 @@ class FreeFEM_ThickFingers_Elasticity(FreeFEM_ThickFingers):
         self.poissons_ratio_inside = poissons_ratio_inside
         self.poissons_ratio_outside = poissons_ratio_outside
 
-        self.__script_problem = textwrap.dedent(
+        self._script_problem = textwrap.dedent(
             """
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // DEFINING PROBLEM AND EQUATION TO SOLVE
@@ -691,12 +691,12 @@ class FreeFEM_ThickFingers_Elasticity(FreeFEM_ThickFingers):
             """
         )
 
-        self.__script_adaptmesh = FreeFEM_ThickFingers.__script_adaptmesh.replace("potential;", \
+        self._script_adaptmesh = self._script_adaptmesh.replace("potential;", \
                                 "Elasticity;\n    sigmavM = vonMises(stress(ur,uq)[0],stress(ur,uq)[3],stress(ur,uq)[1]);")
-        self.__script_adaptmesh = FreeFEM_ThickFingers.__script_adaptmesh.replace("u/u[]", "sigmavM/sigmavM[]")
-        self.__script_adaptmesh = FreeFEM_ThickFingers.__script_adaptmesh.replace("u=u;", "ur=ur; uq=uq;")
-        self.__script_adaptmesh = FreeFEM_ThickFingers.__script_adaptmesh.replace("mobility=mobility;", "E=E; nu=nu;")
-        self.__script_adaptmesh = FreeFEM_ThickFingers.__script_adaptmesh.replace("plot(u, wait=true, fill=true, value=true);", \
+        self._script_adaptmesh = self._script_adaptmesh.replace("u/u[]", "sigmavM/sigmavM[]")
+        self._script_adaptmesh = self._script_adaptmesh.replace("u=u;", "ur=ur; uq=uq;")
+        self._script_adaptmesh = self._script_adaptmesh.replace("mobility=mobility;", "E=E; nu=nu;")
+        self._script_adaptmesh = self._script_adaptmesh.replace("plot(u, wait=true, fill=true, value=true);", \
                                     textwrap.dedent("""
                                         // Stresses 
                                         sigmarr=stress(ur,uq)[0];sigmaqq=stress(ur,uq)[3];sigmarq=stress(ur,uq)[1];
@@ -718,8 +718,8 @@ class FreeFEM_ThickFingers_Elasticity(FreeFEM_ThickFingers):
                                         // plot(Th,Th2,cmm="Deformed configuration/r",wait=1);
                                         """)                          
                                 )
-
-        self.__script_tip_integration = FreeFEM_ThickFingers.__script_tip_integration.replace(
+        
+        self._script_tip_integration = self._script_tip_integration.replace(
                                         textwrap.dedent("""
                                         // Calculating gradient
                                         dxu=dx(u);
@@ -728,15 +728,15 @@ class FreeFEM_ThickFingers_Elasticity(FreeFEM_ThickFingers):
                                         // plot(du, wait=true, fill=true);"""), \
                                         ""
                                     )
-        self.__script_tip_integration = FreeFEM_ThickFingers.__script_tip_integration.replace("[dxu,dyu]'*[N.x,N.y]", "sigmavM")
+        self._script_tip_integration = self._script_tip_integration.replace("[dxu,dyu]'*[N.x,N.y]", "sigmavM")
 
     def prepare_script(self, network):
-        """Return a full FreeFEM script with the `network` geometry."""
+        """Return a full FreeFEM script with the ``network`` geometry."""
         # contours based on the thickened tree
         box_ring, contours_tree, contours_tree_bc, tips, points_in = \
             self.fingers_and_box_contours(network)
            
-        self.script_border_box, self.script_inside_buildmesh_box = \
+        self._script_border_box, self._script_inside_buildmesh_box = \
             self.prepare_script_box(network, box_ring)
 
         buildmesh, tip_information = self.prepare_script_network(network, \
@@ -744,7 +744,7 @@ class FreeFEM_ThickFingers_Elasticity(FreeFEM_ThickFingers):
         
         # Regions 
         regions = ""
-        script_regions = self.__script_regions
+        script_regions = self._script_regions
         for i, p in enumerate(points_in):
             script_regions = script_regions + \
                 textwrap.dedent("""\nint indRegion{i} = Th({x}, {y}).region;""".format(
@@ -766,12 +766,12 @@ class FreeFEM_ThickFingers_Elasticity(FreeFEM_ThickFingers):
         #<-
 
         # Whole script
-        script = self.__script_init + buildmesh + tip_information + script_regions
+        script = self._script_init + buildmesh + tip_information + script_regions
         #-> Elastic specific
         radius = (network.box.points[:,0].min()+network.box.points[:,0].max())/2
-        script = script + self.__script_problem.format(NEUMANN_1=NEUMANN_1,NEUMANN_0=NEUMANN_0, \
+        script = script + self._script_problem.format(NEUMANN_1=NEUMANN_1,NEUMANN_0=NEUMANN_0, \
                                                         radius=radius, radial_deformation=-0.04*radius)
         #<-
-        script = script + self.__script_adaptmesh + self.__script_tip_integration
+        script = script + self._script_adaptmesh + self._script_tip_integration
 
         return script

@@ -100,12 +100,12 @@ class FreeFEM_ThinFingers(FreeFEM):
                 self.bifurcation_thresh = 0
         self.bifurcation_angle = bifurcation_angle  # 2*np.pi/5
 
-        # less than `inflow_thresh` of max flux/velocity puts branches asleep
+        # less than ``inflow_thresh`` of max flux/velocity puts branches asleep
         self.inflow_thresh = inflow_thresh
         self.distance_from_bif_thresh = 2.1 * ds if distance_from_bif_thresh is None else distance_from_bif_thresh
         
         # parts of the script
-        self.__script_init = textwrap.dedent(
+        self._script_init = textwrap.dedent(
             """
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // INITIALISATION
@@ -172,11 +172,11 @@ class FreeFEM_ThinFingers(FreeFEM):
             """
         )
         
-        self.__script_border_box, self.__script_inside_buildmesh_box = \
+        self._script_border_box, self._script_inside_buildmesh_box = \
             self.prepare_script_box(network.box.connections_bc(), \
                                     network.box.points)
         
-        self.__script_problem = textwrap.dedent(
+        self._script_problem = textwrap.dedent(
             """
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // DEFINING PROBLEM AND EQUATION TO SOLVE
@@ -196,11 +196,11 @@ class FreeFEM_ThinFingers(FreeFEM):
         ).format(NEUMANN_1=NEUMANN_1, DIRICHLET_0=DIRICHLET_0, DIRICHLET_1=DIRICHLET_1)
 
         if self.equation==1:
-            self.__script_problem = self.__script_problem.replace(
+            self._script_problem = self._script_problem.replace(
                                             "// -int2d(Th)(v) // rain in domain", 
                                             "-int2d(Th)(v) // rain in domain")
 
-        self.__script_adaptmesh = textwrap.dedent(
+        self._script_adaptmesh = textwrap.dedent(
             """
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // ADAPTING THE MESH AND SOLVING FOR THE FIELD
@@ -257,7 +257,7 @@ class FreeFEM_ThinFingers(FreeFEM):
         )
 
         # // ofstream freefemOutput("{file_name}");
-        self.__script_tip_integration = textwrap.dedent(
+        self._script_tip_integration = textwrap.dedent(
             """
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // INTEGRATING THE FIELD TO GET a_i COEFFICIENTS
@@ -437,11 +437,11 @@ class FreeFEM_ThinFingers(FreeFEM):
         return dRs_test, dt
 
     def prepare_script(self, network):
-        """Return a FreeFEM script with `network` geometry."""
+        """Return a FreeFEM script with ``network`` geometry."""
 
         tips = np.empty((len(network.active_branches), 4))
         border_network = ""
-        inside_buildmesh = self.__script_inside_buildmesh_box
+        inside_buildmesh = self._script_inside_buildmesh_box
         for i, branch in enumerate(network.branches):
             border_network, inside_buildmesh = self.prepare_contour_list(border_network, inside_buildmesh, i, branch.points, label=branch.BC, border_name="branch")
             # border_network, inside_buildmesh = self.prepare_contour(border_network, inside_buildmesh, i, branch.points, label=branch.BC, border_name="branch")
@@ -461,7 +461,7 @@ class FreeFEM_ThinFingers(FreeFEM):
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             """
             )
-            + self.__script_border_box
+            + self._script_border_box
             + border_network
             + "\nplot({inside_buildmesh}, dim=2, wait=true);\n\n".format(
                 inside_buildmesh=inside_buildmesh
@@ -493,9 +493,9 @@ class FreeFEM_ThinFingers(FreeFEM):
             )
         )
 
-        script = self.__script_init + buildmesh + tip_information + \
-                    self.__script_problem + self.__script_adaptmesh + \
-                        self.__script_tip_integration
+        script = self._script_init + buildmesh + tip_information + \
+                    self._script_problem + self._script_adaptmesh + \
+                        self._script_tip_integration
 
         return script
 
@@ -503,7 +503,7 @@ class FreeFEM_ThinFingers(FreeFEM):
         """Solve the PDE for the field around the network.
 
         Prepare a FreeFEM script, export it to a temporary file and run.
-        Then, import the a1a2a3 coefficients to `self.flux_info`.
+        Then, import the a1a2a3 coefficients to ``self.flux_info``.
 
         Parameters
         ----------
@@ -553,9 +553,6 @@ class FreeFEM_ThinFingers_Boundary(FreeFEM_ThinFingers):
     flux_info, bifurcation_type, bifurcation_thresh, 
         bifurcation_angle, inflow_thresh, distance_from_bif_thresh inherited from FreeFEM_ThinFingers
 
-    is_leaf : bool, default False
-        If True, solve_PDE returns rim_xy_flux.
-
     References
     ----------
     .. [Ref1] "Through history to growth dynamics: backward evolution of spatial networks",
@@ -579,7 +576,7 @@ class FreeFEM_ThinFingers_Boundary(FreeFEM_ThinFingers):
             inflow_thresh=0.05,
             distance_from_bif_thresh=None,
         ):
-        """Initialize FreeFEM_ThinFingers.
+        """Initialize FreeFEM_ThinFingers_Boundary.
 
         Parameters
         ----------
@@ -617,24 +614,22 @@ class FreeFEM_ThinFingers_Boundary(FreeFEM_ThinFingers):
                         plot(distExp, wait=true, fill=1);
                         """
                         )
-        
-        self.__script_init = """load "distance"\n""" + FreeFEM_ThinFingers.__script_init
 
-        self.__script_adaptmesh = FreeFEM_ThinFingers.__script_adaptmesh.replace("\n// Solving the problem", \
+        self._script_init = """load "distance"\n""" + self._script_init
+
+        self._script_adaptmesh = self._script_adaptmesh.replace("\n// Solving the problem", \
                                           script_distance+"\n// Solving the problem")
-        self.__script_adaptmesh = self.__script_adaptmesh.replace("nvAroundTips.min < 250", "nvAroundTips.min < 100")
-        # self.__script_adaptmesh = self.__script_adaptmesh.replace("Th = adaptmesh(Th,1,", "// Th = adaptmesh(Th,1,")
-        self.__script_adaptmesh = add_after(self.__script_adaptmesh, "keepbackvertices=1",",requirededges=reqEdgs")
-        
-        self.__script_adaptmesh = add_after( self.__script_adaptmesh, \
+        self._script_adaptmesh = self._script_adaptmesh.replace("nvAroundTips.min < 250", "nvAroundTips.min < 100")
+        # self._script_adaptmesh = self._script_adaptmesh.replace("Th = adaptmesh(Th,1,", "// Th = adaptmesh(Th,1,")
+        self._script_adaptmesh = add_after(self._script_adaptmesh, "keepbackvertices=1",",requirededges=reqEdgs")
+        self._script_adaptmesh = add_after( self._script_adaptmesh, \
                                             "// counting cells around the tips",
                                             "\nint[int] reqEdgs=[{DIRICHLET_1}];".format(DIRICHLET_1=DIRICHLET_1) )
-        self.__script_adaptmesh = add_after(self.__script_adaptmesh, \
+        self._script_adaptmesh = add_after(self._script_adaptmesh, \
                                             "u=u;", "distExp=distExp;")
-        self.__script_adaptmesh = add_after(self.__script_adaptmesh, \
+        self._script_adaptmesh = add_after(self._script_adaptmesh, \
                                             "*R,nbTips)", ", distExp")
-        
-        self.__script_adaptmesh = self.__script_adaptmesh.replace("// plot(Th", "plot(Th")
+        self._script_adaptmesh = self._script_adaptmesh.replace("// plot(Th", "plot(Th")
     
         script_flux_rim = textwrap.dedent("""
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -675,22 +670,23 @@ class FreeFEM_ThinFingers_Boundary(FreeFEM_ThinFingers):
             // plot([angles,fluxes], wait=true);
             """.format(DIRICHLET_1=DIRICHLET_1)
         )
-        self.__script_tip_integration = FreeFEM_ThinFingers.__script_tip_integration + script_flux_rim
+        self._script_tip_integration = self._script_tip_integration + script_flux_rim
 
     def prepare_script(self, network):
-        """Return a FreeFEM script with `network` geometry."""
+        """Return a FreeFEM script with ``network`` geometry."""
 
-        self.__script_border_box, self.__script_inside_buildmesh_box = \
+        self._script_border_box, self._script_inside_buildmesh_box = \
             self.prepare_script_box(network.box.connections_bc(), \
                                     network.box.points)
         
-        FreeFEM.prepare_script(network)
+        script = super().prepare_script(network)
+
+        return script
 
     def solve_PDE(self, network):
         """Solve the PDE for the field around the network.
 
-        Prepare a FreeFEM script, export it to a temporary file and run.
-        Then, import the a1a2a3 coefficients to `self.flux_info`.
+        Additionally, compute fluxes at the growing boundary.
 
         Parameters
         ----------
@@ -703,7 +699,7 @@ class FreeFEM_ThinFingers_Boundary(FreeFEM_ThinFingers):
 
         """
 
-        out_freefem = super().solve_PDE(network)
+        out_freefem = super().solve_PDE(network, is_out_freefem_returned=True)
 
         rim_xs = self.array_from_string(out_freefem.stdout,"xs")
         rim_ys = self.array_from_string(out_freefem.stdout,"ys")

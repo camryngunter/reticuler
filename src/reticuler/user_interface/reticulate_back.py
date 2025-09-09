@@ -41,9 +41,9 @@ def main():
         help=textwrap.dedent(
             """\
             File to export:
-            exp_name = `exp_name`+'_back.json'.
+            exp_name = ``exp_name``+'_back.json'.
             If left as default: 
-            exp_name = `input_file`+'_back.json'.
+            exp_name = ``input_file``+'_back.json'.
             
             default = ''
             """
@@ -125,8 +125,8 @@ def main():
         help=textwrap.dedent(
             """\
             Continuation of the previously commenced BEA.
-            System will be imported from `input_file` and backward system from 
-            `continuation_file`+'.json'.
+            System will be imported from ``input_file`` and backward system from 
+            ``continuation_file``+'.json'.
             """
         ),
         default=[""],

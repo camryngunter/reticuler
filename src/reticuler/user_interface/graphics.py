@@ -1,4 +1,4 @@
-"""Preparing plots.
+r"""Preparing plots.
 
 Functions:
     plot_tree(ax, network, height=2.0, width=2.0, \*\*kwargs_tree_plot)
@@ -66,7 +66,7 @@ def plot_tree(ax, system,
               ymin=None, ymax=None,
               facecolor="#def1ff",
               **kwargs_tree_plot):
-    """Plot a tree with optional arguments from \*\*kwargs_tree, and a black box (with facecolor).
+    r"""Plot a tree with optional arguments from \*\*kwargs_tree, and a black box (with facecolor).
 
     Parameters
     -------
@@ -98,8 +98,8 @@ def plot_tree(ax, system,
 
     """
     rot_angle = 0 if rot_angle is None else rot_angle
-    is_thick = type(system.extender.pde_solver).__name__=="FreeFEM_ThickFingers" \
-                        if is_thick is None else is_thick
+    is_ff_thick = "FreeFEM_ThickFingers" in type(system.extender.pde_solver).__name__
+    is_thick = is_ff_thick if is_thick is None else is_thick
     if is_thick:
         options_tree_plot = {"color": "0.5", "linewidth": 1.25}
     else:
@@ -165,7 +165,7 @@ def animate_tree(system0,
                  ymin=None, ymax=None,
                  max_time=None, speed_factor=None, 
                  **kwargs_tree_plot):
-    """Plot a tree with optional arguments from \*\*kwargs_tree, and a black box.
+    r"""Plot a tree with optional arguments from \*\*kwargs_tree, and a black box.
 
     Parameters
     -------
@@ -187,8 +187,8 @@ def animate_tree(system0,
 
     """
     rot_angle = 0 if rot_angle is None else rot_angle
-    is_thick = type(system0.extender.pde_solver).__name__=="FreeFEM_ThickFingers" \
-                        if is_thick is None else is_thick
+    is_ff_thick = "FreeFEM_ThickFingers" in type(system0.extender.pde_solver).__name__
+    is_thick = is_ff_thick if is_thick is None else is_thick
     if is_thick:
         options_tree_plot = {"color": "0.5", "linewidth": 1.25}
     else:

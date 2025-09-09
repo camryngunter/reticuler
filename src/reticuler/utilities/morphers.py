@@ -15,10 +15,6 @@ class Jellyfish:
 
     Attributes
     ----------
-    sprouting_thresh : float, default 1.5
-        Threshold for inserting new sprouts [mm].
-    sprouting_stochastic_factor : float, default 0.2
-        Factor to randomize the position of new sprouts [mm].
     radii : array, default [0]
         How radius changed in time (corresponds to system.timestamps).       
     timescale : float, default 1
@@ -28,6 +24,10 @@ class Jellyfish:
         Assuming that the fastest sprout grows at constant speed v_sprout_desired => dt = timescale = ds / v_sprout_desired
     v_rim : float, default 1.4
         Jellyfish radius growth rate [mm/day].
+    sprouting_thresh : float, default 1.5
+        Threshold for inserting new sprouts [mm].
+    sprouting_stochastic_factor : float, default 0.2
+        Factor to randomize the position of new sprouts [mm].        
 
     """ 
     def __init__(
@@ -42,11 +42,11 @@ class Jellyfish:
 
         Parameters
         ----------
-        sprouting_thresh : float, default 1.5
-        sprouting_stochastic_factor : float, default 0.2
         radii : array, default [0]
         timescale : float, default 1
         v_rim : float, default 1.4
+        sprouting_thresh : float, default 1.5
+        sprouting_stochastic_factor : float, default 0.2        
 
         Returns
         -------
@@ -204,7 +204,7 @@ class Leaf:
         y+=(2*(vx[1:]*sy<vy[1:]*sx)-1)*sy
         
         ###### CONTROL POINT DENSITY ######
-        min_separation=0.005
+        min_separation=0.03
         max_separation=0.05
         
         points = np.array([x, y]).T

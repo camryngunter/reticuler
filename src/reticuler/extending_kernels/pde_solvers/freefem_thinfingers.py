@@ -534,7 +534,7 @@ class FreeFEM_ThinFingers(FreeFEM):
         with np.printoptions(formatter={"float": "{:.6e}".format}):
             print("a1a2a3") # , self.flux_info)
             for i, branch in enumerate(network.active_branches):
-                print("Branch {}:".format(branch.ID), self.flux_info[i], ", l={}".format(branch.length()))
+                print(f"Branch {branch.ID}: {self.flux_info[i]}, l={branch.length()}")
         
         if self.is_backward:
             return self.flux_info.copy()

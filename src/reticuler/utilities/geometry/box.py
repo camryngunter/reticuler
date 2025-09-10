@@ -86,27 +86,27 @@ class Box:
         return copy.deepcopy(self)
 
     @classmethod
-    def construct(cls, initial_condition=0, **kwargs_construct):
+    def construct(cls, initial_condition=100, **kwargs_construct):
         """Construct a Box with given initial condition.
 
         Parameters
         ----------
-        initial_condition : int, default 0
-            IC = 0, 1, 2, 3, 8. Rectangular box of dimensions ``width`` x ``height``,
+        initial_condition : int, default 100
+            IC = 100, 101, 102, 103, 300. Rectangular box of dimensions ``width`` x ``height``,
             absorbing bottom wall, reflecting left and right, and:
-                - IC = 0: constant flux on top (Laplacian case)
-                - IC = 1: reflective top (Poissonian case)
-                - IC = 2: PBC right and left wall + DIRICHLET_1 BC on top
-                - IC = 3: DIRICHLET_1 BC on top
-                - IC = 8: DIRICHLET_1 BC on growing top
-            IC = 4, 5: jellyfish (an octant) with a trifork
-                - IC = 4: Dirichlet on bottom and top, but rescaled such that global flux is constant
-                - IC = 5: u=0 on top and Neumann on bottom
-            IC = 6: leaf semiellipse with seeds at the bottom boundary
-            IC = 7: leaf circle with seeds in the center
-            IC = 9: leaf slice with seeds in the center
+                - IC = 100: constant flux on top (Laplacian case)
+                - IC = 101: reflective top (Poissonian case)
+                - IC = 102: PBC right and left wall + DIRICHLET_1 BC on top
+                - IC = 103: DIRICHLET_1 BC on top
+                - IC = 300: DIRICHLET_1 BC on growing top
+            IC = 200, 201: jellyfish (an octant) with a trifork
+                - IC = 200: Dirichlet on bottom and top, but rescaled such that global flux is constant
+                - IC = 201: u=0 on top and Neumann on bottom
+            IC = 301: leaf semiellipse with seeds at the bottom boundary
+            IC = 350: leaf circle with seeds in the center
+            IC = 351: leaf slice with seeds in the center
         kwargs_construct:
-            IC = 0, 1, 2, 3, 6, 8
+            IC = 100, 101, 102, 103, 106, 300 (seeds vertically at the bottom)
                 seeds_x : array, default [0.5]
                     A 1-n array of x positions at the bottom boundary (y=0).
                 initial_lengths : array, default [0.01]
@@ -121,7 +121,7 @@ class Box:
                     Height of the rectangular system.
                 width : float, default 2.0
                     Width of the rectangular system.
-            IC = 7, 9
+            IC = 350, 351 (seeds radially in the center)
                 seeds_phi : array, default [0]
                     A 1-n array of phi angles at the center (0,0) relative to Y axis.
                 initial_lengths : array, default [0.4]
@@ -131,7 +131,7 @@ class Box:
                 radius : float, default 0.5
                     Radius of the semicircle/circle
                 angular_width: float, default 2*np.pi
-                    Angular width of the slice. If 2*np.pi, then initial_condition = 7.
+                    Angular width of the slice. If 2*np.pi, then initial_condition = 350.
 
         Returns
         -------
@@ -146,7 +146,7 @@ class Box:
         box = cls(initial_condition=initial_condition)
 
         # Rectangular box of specified width and height
-        if initial_condition <=3 or initial_condition == 6 or initial_condition == 8:
+        if initial_condition//100==1 or initial_condition==300 or initial_condition==301:
             options_construct = {
                 "seeds_x": [0.5],
                 "initial_lengths": [0.01],
@@ -174,7 +174,7 @@ class Box:
             options_construct["branch_BCs"]=np.array(options_construct["branch_BCs"])
             mask_seeds_from_outlet = options_construct["branch_BCs"]==DIRICHLET_1
             
-            if initial_condition<=3:
+            if initial_condition//100==1:
                 # right boundary
                 box.__add_points(
                     [
@@ -202,13 +202,13 @@ class Box:
             else:
                 n_points_top=int(50*options_construct["width"])
             
-            if initial_condition==6:
+            if initial_condition==301:
                 # semi ellipse
                 box.__add_points(
                     np.vstack(( options_construct["width"]*np.cos(np.linspace(0, np.pi, n_points_top)),
                               options_construct["height"]*np.sin(np.linspace(0, np.pi, n_points_top)) )).T
                 )
-            if initial_condition==8:
+            if initial_condition==300:
                 # bottom right corner
                 box.__add_points([[options_construct["width"], 0]])
                 # top including left and right corners
@@ -263,15 +263,15 @@ class Box:
             # right, left, top Neumann:
             box.boundary_conditions[:-1-sum(~mask_seeds_from_outlet)] = NEUMANN_0
             # or top constant flux:
-            if initial_condition == 0:
+            if initial_condition==100:
                 box.boundary_conditions[1] = NEUMANN_1
-            if initial_condition == 2:
+            if initial_condition==102:
                 box.boundary_conditions[1] = DIRICHLET_1
                 box.boundary_conditions[0] = RIGHT_WALL_PBC
                 box.boundary_conditions[2] = LEFT_WALL_PBC
-            if initial_condition == 3 or initial_condition == 8:
+            if initial_condition==103 or initial_condition==300:
                 box.boundary_conditions[1:-2-sum(~mask_seeds_from_outlet)] = DIRICHLET_1
-            if initial_condition == 6:
+            if initial_condition==301:
                 box.boundary_conditions[:-1-sum(~mask_seeds_from_outlet)] = DIRICHLET_1
                 box.boundary_conditions[-1-sum(~mask_seeds_from_outlet):] = NEUMANN_0
             # Creating initial branches
@@ -302,7 +302,7 @@ class Box:
             branch_connectivity = None
                 
         # Jellyfish
-        elif initial_condition == 4 or initial_condition == 5:
+        elif initial_condition//100==2:
             angular_width = 2*np.pi / 8
             R_rim = 5 # mm
             R_stom = 0.45 * R_rim
@@ -350,7 +350,7 @@ class Box:
             box.boundary_conditions[n_points_stomach+1] = NEUMANN_0
             # top DIRICHLET_GLOB_FLUX
             box.boundary_conditions[1:n_points_stomach+1] = DIRICHLET_GLOB_FLUX
-            if initial_condition == 5:
+            if initial_condition==201:
                 box.boundary_conditions[1:n_points_stomach+1] = DIRICHLET_0 # top
                 box.boundary_conditions[n_points_stomach+2:] = NEUMANN_1 # bottom
             
@@ -409,8 +409,8 @@ class Box:
                 
             branch_connectivity = np.array([[0,-1],[1,0],[2,0]])
         
-        # Leaf: circle or slice
-        elif initial_condition == 7 or initial_condition == 9:
+        # Leaf radial seeds in the center: circle or slice
+        elif initial_condition//10==35:
             options_construct = {
                 "seeds_phi": [0],
                 "initial_lengths": [0.1],
@@ -420,11 +420,11 @@ class Box:
             }
             options_construct.update(kwargs_construct)
             if options_construct["angular_width"]==2*np.pi:
-                initial_condition = 7 # full circle
-                box.initial_condition = 7 # full circle
+                initial_condition = 350 # full circle
+                box.initial_condition = 350 # full circle
             elif options_construct["angular_width"]<2*np.pi:
-                initial_condition = 9 # slice
-                box.initial_condition = 9 # slice
+                initial_condition = 351 # slice
+                box.initial_condition = 351 # slice
 
             if type(options_construct["seeds_phi"])==int:
                 options_construct["seeds_phi"]=2*np.pi/options_construct["seeds_phi"]*np.arange(options_construct["seeds_phi"])
@@ -451,7 +451,7 @@ class Box:
                                                     n_points_rim), \
                                     0) )
             )
-            if initial_condition == 7:
+            if initial_condition==350:
                 box.points=box.points[1:]
                 box.seeds_connectivity = []
             else:
@@ -474,26 +474,12 @@ class Box:
                 boundary_conditions=DIRICHLET_1
                 * np.ones(len(connections_to_add), dtype=int),
             )
-            if initial_condition == 9:
+            if initial_condition==351:
                 box.boundary_conditions[-2:] = NEUMANN_0
 
             # Creating initial branches
             branches = []
             active_branches = []
-            # if initial_condition == 6:
-                # for i, x in enumerate(options_construct["seeds_x"]):
-                    # BC = options_construct["branch_BCs"][i]
-                    # branch = Branch(
-                            # ID=i,
-                            # points=np.array(
-                                # [[x, 0], [x, options_construct["initial_lengths"][i]]]
-                            # ),
-                            # steps=np.array([0, 0]),
-                            # BC=BC
-                        # )
-                    # branches.append(branch)
-                    # active_branches.append(branch)
-            # elif initial_condition == 7:
             for i, phi in enumerate(options_construct["seeds_phi"]):
                 BC = options_construct["branch_BCs"][i]
                 IL = options_construct["initial_lengths"][i]

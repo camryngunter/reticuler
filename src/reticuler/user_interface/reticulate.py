@@ -95,7 +95,7 @@ def main():
                     Box.construct.__doc__.find("kwargs_construct")
             ]
         ),
-        default=[0],
+        default=[100],
     )
     parser.add_argument(
         "--kwargs_box",
@@ -283,13 +283,12 @@ def main():
                           branch_connectivity=branch_connectivity)
         
         # Morpher
-        if args.initial_condition[0]==4 or args.initial_condition[0]==5:
+        if args.initial_condition[0]//100==2:
             morpher = morphers.Jellyfish(
                         radii=np.array([(network.box.points[:,0].min()+network.box.points[:,0].max())/2]), 
                         **args.morpher_params[0]
                         )
-        elif args.initial_condition[0]==6 or args.initial_condition[0]==7 or \
-          args.initial_condition[0]==8 or args.initial_condition[0]==9:
+        elif args.initial_condition[0]//100==3:
             morpher = morphers.Leaf(box_history=[box.copy()], **args.morpher_params[0])
         else:
             morpher = None

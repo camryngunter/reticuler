@@ -160,8 +160,8 @@ class FreeFEM:
         """Run FreeFEM script."""
         
         if self.is_script_saved:
-            script_name = "script_{ID}_{date}.edp".format(ID=id(self),
-                            date=datetime.now().strftime("%Y_%m_%d-%p%I_%M_%S"))
+            # script_name = f"script_{id(self)}_{datetime.now().strftime("%Y_%m_%d-%p%I_%M_%S")}.edp"
+            script_name = self.system.exp_name + f"_{datetime.now().strftime("%Y_%m_%d-%p%I_%M_%S")}.edp"
             with open(script_name, "w") as edp_file:
                 edp_file.write(script)        
         else:
@@ -193,7 +193,7 @@ class FreeFEM:
                 os.unlink(tmp_file.name)
                 
         if out_freefem.returncode or "nan" in out_freefem.stdout.decode():
-            script_name = f"script_{id(self)}_{datetime.now().strftime('%Y_%m_%d-%p%I_%M_%S')}_failed.edp"
+            script_name = self.system.exp_name + f"_{datetime.now().strftime("%Y_%m_%d-%p%I_%M_%S")}_failed.edp"
             print(f"\nFreeFem++ failed... Saving the script: {script_name}\n")
             print("stdout:", out_freefem.stdout.decode())
             print("stderr:", out_freefem.stderr.decode())

@@ -82,6 +82,8 @@ class System:
         """
         self.network = network
         self.extender = extender
+        if extender.pde_solver and "FreeFEM" in type(extender.pde_solver).__name__:
+            self.extender.pde_solver.system = self
         self.morpher = morpher
 
         # Growth limits:
@@ -492,5 +494,5 @@ class System:
 
 if __name__ == "__main__":
     box, branches, active_branches = Box.construct(
-        initial_condition=4
+        initial_condition=100
     )

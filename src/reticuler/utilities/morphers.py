@@ -148,6 +148,8 @@ class Leaf:
         self,
         box_history=[],
         v_rim=1,
+        pts_min_separation=0.015,
+        pts_max_separation=0.03
     ):
         """Initialize Leaf.
 
@@ -163,6 +165,8 @@ class Leaf:
         """
         self.box_history = box_history
         self.v_rim = v_rim
+        self.pts_min_separation = pts_min_separation
+        self.pts_max_separation = pts_max_separation
     
     def morph(self, network, out_growth, step):
         
@@ -204,9 +208,6 @@ class Leaf:
         y+=(2*(vx[1:]*sy<vy[1:]*sx)-1)*sy
         
         ###### CONTROL POINT DENSITY ######
-        min_separation=0.03
-        max_separation=0.05
-        
         points = np.array([x, y]).T
         if network.box.initial_condition==350: # Circular case
             points = np.vstack((points, points[0]))
@@ -216,16 +217,16 @@ class Leaf:
             current_point = points[i]
             distance = np.linalg.norm(current_point - last_kept_point)
             # Too far apart -> Insert interpolated points
-            if distance > max_separation:
-                # Calculate how many segments of max_separation length fit between the points
-                num_segments = int(np.ceil(distance / max_separation))
+            if distance > self.pts_max_separation:
+                # Calculate how many segments of self.pts_max_separation length fit between the points
+                num_segments = int(np.ceil(distance / self.pts_max_separation))
                 # Use linear interpolation to generate the intermediate points
                 t_values = np.linspace(0, 1, num_segments + 1)
                 interpolated_points = (1 - t_values[:, np.newaxis]) * last_kept_point + t_values[:, np.newaxis] * current_point
                 # Add all new points to the list, except the first (which is last_kept_point)
                 processed_points.extend(interpolated_points[1:])
             # Accepted separation range -> Keep the point
-            elif distance >= min_separation:
+            elif distance >= self.pts_min_separation:
                 processed_points.append(current_point)
             # If the last two points are too close, replace the penultimate point with the last
             elif i==len(points)-1:

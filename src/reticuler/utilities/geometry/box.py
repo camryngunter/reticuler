@@ -495,5 +495,7 @@ class Box:
                 active_branches.append(branch)
             
             branch_connectivity = None
-            
+        else:
+            print(f"\n###################\nInitial condition {initial_condition} is incorrect! Choose another one.\n################### \n")
+
         return box, branches, active_branches, branch_connectivity

@@ -173,8 +173,8 @@ class FreeFEM_ThinFingers(FreeFEM):
         )
         
         self._script_border_box, self._script_inside_buildmesh_box = \
-            self.prepare_script_box(network.box.connections_bc(), \
-                                    network.box.points)
+            super().prepare_script_box(network.box.connections_bc(), \
+                                        network.box.points)
         
         self._script_problem = textwrap.dedent(
             """
@@ -443,8 +443,8 @@ class FreeFEM_ThinFingers(FreeFEM):
         border_network = ""
         inside_buildmesh = self._script_inside_buildmesh_box
         for i, branch in enumerate(network.branches):
-            border_network, inside_buildmesh = self.prepare_contour_list(border_network, inside_buildmesh, i, branch.points, label=branch.BC, border_name="branch")
-            # border_network, inside_buildmesh = self.prepare_contour(border_network, inside_buildmesh, i, branch.points, label=branch.BC, border_name="branch")
+            border_network, inside_buildmesh = super().prepare_contour_list(border_network, inside_buildmesh, i, branch.points, label=branch.BC, border_name="branch")
+            # border_network, inside_buildmesh = super().prepare_contour(border_network, inside_buildmesh, i, branch.points, label=branch.BC, border_name="branch")
             if branch in network.active_branches:
                 ind = network.active_branches.index(branch)
                 tips[ind, 0] = branch.BC # boundary condition
@@ -486,10 +486,10 @@ class FreeFEM_ThinFingers(FreeFEM):
             real[int] Y(nbTips); Y={y};\n
             """.format(
                 n_tips=len(network.active_branches),
-                bc=self.arr2str(tips[:,0]),
-                angle=self.arr2str(tips[:,1]),
-                x=self.arr2str(tips[:,2]),
-                y=self.arr2str(tips[:,3]),
+                bc=super().arr2str(tips[:,0]),
+                angle=super().arr2str(tips[:,1]),
+                x=super().arr2str(tips[:,2]),
+                y=super().arr2str(tips[:,3]),
             )
         )
 
@@ -517,8 +517,8 @@ class FreeFEM_ThinFingers(FreeFEM):
         """
         script = self.prepare_script(network)
         
-        out_freefem = self.run_freefem(script)
-        if out_freefem.returncode:
+        out_freefem = super().run_freefem(script)
+        if out_freefem.returncode or "nan" in out_freefem.stdout.decode():
             print("\nTrying again...\n")
             # script_perturbed = script.replace("nvAroundTips.min < 250","nvAroundTips.min < 350")
             lookfor = "boxN(0:1023)=["
@@ -526,7 +526,7 @@ class FreeFEM_ThinFingers(FreeFEM):
             ind2 = ind + script[ind:].find(",")
             boxN_0 = script[ind:ind2]
             script_perturbed = script.replace(lookfor+boxN_0,lookfor+str(int(boxN_0)+1))
-            out_freefem = self.run_freefem(script_perturbed)
+            out_freefem = super().run_freefem(script_perturbed)
             
         ai_coeffs_flat = self.array_from_string(out_freefem.stdout, "kopytko")
         self.flux_info = ai_coeffs_flat.reshape(len(ai_coeffs_flat) // 3, 3)
@@ -534,7 +534,7 @@ class FreeFEM_ThinFingers(FreeFEM):
         with np.printoptions(formatter={"float": "{:.6e}".format}):
             print("a1a2a3") # , self.flux_info)
             for i, branch in enumerate(network.active_branches):
-                print(f"Branch {branch.ID}: {self.flux_info[i]}, l={branch.length()}")
+                print(f"Branch {branch.ID}: {self.flux_info[i]}, l={branch.length():.3g}")
         
         if self.is_backward:
             return self.flux_info.copy()
@@ -676,8 +676,8 @@ class FreeFEM_ThinFingers_Boundary(FreeFEM_ThinFingers):
         """Return a FreeFEM script with ``network`` geometry."""
 
         self._script_border_box, self._script_inside_buildmesh_box = \
-            self.prepare_script_box(network.box.connections_bc(), \
-                                    network.box.points)
+            super().prepare_script_box(network.box.connections_bc(), \
+                                        network.box.points)
         
         script = super().prepare_script(network)
 

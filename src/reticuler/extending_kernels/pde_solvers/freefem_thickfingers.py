@@ -4,7 +4,7 @@ import numpy as np
 
 import shapely
 from shapely.ops import linemerge 
-from shapely.geometry import MultiLineString, LinearRing, Polygon
+from shapely.geometry import LineString, MultiLineString, LinearRing, Polygon
 
 from reticuler.utilities.misc import LEFT_WALL_PBC, RIGHT_WALL_PBC, DIRICHLET_1, DIRICHLET_0, NEUMANN_0, NEUMANN_1, DIRICHLET_GLOB_FLUX
 from reticuler.utilities.misc import rotation_matrix
@@ -305,7 +305,7 @@ class FreeFEM_ThickFingers(FreeFEM):
         pts = []
         pts_in = [] # points inside subdomains with higher mobility
         tips_all = []; tips_active = [];
-        for i, branch in enumerate(network.branches):
+        for branch in network.branches:
             
             # # don't take too much points
             # skeleton = [branch.points[0]]
@@ -337,6 +337,26 @@ class FreeFEM_ThickFingers(FreeFEM):
         tree = MultiLineString(pts)
         thick_tree = tree.buffer(distance=self.finger_width/2, cap_style=1, join_style=1, quad_segs=25)
         box_ring = LinearRing(network.box.points)
+        #####
+        # box_ring = linemerge( [*box_ring.difference(thick_tree).geoms,
+        #                   *box_ring.intersection(thick_tree).geoms])
+        #####
+        # box_ring_diff_tree = box_ring.difference(thick_tree).geoms
+        # lines_to_merge = []
+        # for i in range(len(box_ring_diff_tree)):
+        #     p1 = box_ring_diff_tree[i].coords[-1]
+        #     p2 = box_ring_diff_tree[(i+1)%len(box_ring_diff_tree)].coords[0]
+        #     lines_to_merge.append(box_ring_diff_tree[i]) # .simplify(tolerance=1e-4)
+        #     lines_to_merge.append(LineString([p1, p2])) # connecting line
+        # box_ring = linemerge(lines_to_merge)
+        #####
+        lines_to_merge = [] 
+        br_diff_tree = box_ring.difference(thick_tree)
+        br_intersec_tree = box_ring.intersection(thick_tree)
+        lines_to_merge = [g.simplify(tolerance=1e-4) for g in br_diff_tree.geoms] + \
+                            [g.simplify(tolerance=1e-4) for g in br_intersec_tree.geoms]
+        box_ring_simp = linemerge(lines_to_merge)
+
         box_polygon = Polygon(box_ring)
         box_ring = linemerge( [*box_ring.difference(thick_tree).geoms,
                           *box_ring.intersection(thick_tree).geoms])
@@ -350,6 +370,8 @@ class FreeFEM_ThickFingers(FreeFEM):
             poly = shapely.geometry.polygon.orient(poly) # now, exterior is ccw, but interiors are cw
             
             # exteriors
+            # poly_exterior = poly.exterior.simplify(tolerance=1e-4)
+            # poly_exterior = poly_exterior.difference(box_ring)
             poly_exterior = poly.exterior.difference(box_ring)
             lines = [poly_exterior] if poly_exterior.geom_type=="LineString" else poly_exterior.geoms
             for line in lines:
@@ -370,7 +392,7 @@ class FreeFEM_ThickFingers(FreeFEM):
                 if mask.any():
                     contours_tree_bc[-1] = ~mask*888 + mask*b_label
         
-        return box_ring, contours_tree, contours_tree_bc, tips_active, pts_in
+        return box_ring_simp, contours_tree, contours_tree_bc, tips_active, pts_in
 
     def prepare_script_box(self, network, box_ring):
         """Return parts of the FreeFEM script with the geometry of the ``network.box``."""
@@ -387,7 +409,7 @@ class FreeFEM_ThickFingers(FreeFEM):
         
         border_nodes_mask = np.diff(network.box.boundary_conditions)!=0
         border_nodes = network.box.points[1:][border_nodes_mask]
-        border_nodes_inds2 = np.where(self.inNd(box_ring_pts,border_nodes))[0] # ?assumes that the points are ordered (if not we need to use a solution like for the seeds)
+        border_nodes_inds2 = np.where(super().inNd(box_ring_pts,border_nodes))[0] # ?assumes that the points are ordered (if not we need to use a solution like for the seeds)
         boundary_conditions = np.ones(len(connections_to_add), dtype=int)
         boundary_conditions[:border_nodes_inds2[1]] = network.box.boundary_conditions[0]
         bcs0 = network.box.boundary_conditions[1:][border_nodes_mask]
@@ -397,15 +419,15 @@ class FreeFEM_ThickFingers(FreeFEM):
         # points_to_plot = box_ring_pts[connections_to_add]
         # for i, pts in enumerate(points_to_plot):
         #     plt.plot(*pts.T, '.-', ms=1, lw=5, \
-        #     color="{}".format(boundary_conditions[i]/5))
-        # for p in network.box.points[1:][border_nodes]:
+        #     color=f"{boundary_conditions[i]/6}")
+        # for p in network.box.points[1:][border_nodes_mask]:
         #     plt.plot(*p, '.',ms=20, c='r')
         
         border_box, inside_buildmesh_box = \
             super().prepare_script_box( 
                                         np.column_stack((connections_to_add, boundary_conditions)), \
                                         box_ring_pts, \
-                                        points_per_unit_len=0.5)
+                                        points_per_unit_len=0.5)  
         
         return border_box, inside_buildmesh_box
 
@@ -417,7 +439,7 @@ class FreeFEM_ThickFingers(FreeFEM):
         for i, points in enumerate(contours_tree):
             # points = np.flip(points0, axis=0)
             border_contour, inside_buildmesh = \
-                self.prepare_contour_list(border_contour, inside_buildmesh, i, points, \
+                super().prepare_contour_list(border_contour, inside_buildmesh, i, points, \
                                     label=contours_tree_bc[i], border_name="contour" )
         
         inside_buildmesh = self._script_inside_buildmesh_box + inside_buildmesh[:-2]
@@ -457,9 +479,9 @@ class FreeFEM_ThickFingers(FreeFEM):
             """.format(
                 f_w_half=self.finger_width/2,
                 n_tips=len(network.active_branches),
-                tip_labels=self.arr2str(tips[:,0]),
-                x=self.arr2str(tips[:,1]),
-                y=self.arr2str(tips[:,2]),
+                tip_labels=super().arr2str(tips[:,0]),
+                x=super().arr2str(tips[:,1]),
+                y=super().arr2str(tips[:,2]),
             )
         )
 
@@ -525,11 +547,9 @@ class FreeFEM_ThickFingers(FreeFEM):
         """
         script = self.prepare_script(network)
         
-        out_freefem = self.run_freefem(script)
+        out_freefem = super().run_freefem(script)
         
         if out_freefem.returncode or "nan" in out_freefem.stdout.decode():
-            print("\n\nError or nan detected... Printing output:\n")
-            print(out_freefem.stdout.decode())
             print("\n\n\nTrying again...")
             lookfor = "boxN(0:1023)=["
             ind = script.find(lookfor) + len(lookfor)
@@ -537,7 +557,7 @@ class FreeFEM_ThickFingers(FreeFEM):
             boxN = np.fromstring(script[ind:ind2], sep=",", dtype=int)
             boxN_1 = np.array2string(boxN*2, separator=',', max_line_width=1000)[1:-1]
             script_perturbed = script.replace(script[ind:ind2],boxN_1)
-            out_freefem = self.run_freefem(script_perturbed)
+            out_freefem = super().run_freefem(script_perturbed)
 
         # flux_info calculated in FreeFem:
         # flux_info = np.fromstring(out_freefem.stdout[out_freefem.stdout.find(b"kopytko")+7:], sep=",")
@@ -737,7 +757,7 @@ class FreeFEM_ThickFingers_Elasticity(FreeFEM_ThickFingers):
             self.fingers_and_box_contours(network)
            
         self._script_border_box, self._script_inside_buildmesh_box = \
-            self.prepare_script_box(network, box_ring)
+            super().prepare_script_box(network, box_ring)
 
         buildmesh, tip_information = self.prepare_script_network(network, \
                                             contours_tree, contours_tree_bc, tips)

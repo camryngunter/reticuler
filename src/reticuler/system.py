@@ -378,7 +378,7 @@ class System:
                 # Solver
                 json_solver = json_load["extender"]["pde_solver"]
                 # !!! Backward compatibility
-                if not json_morpher["type"] == "Leaf" and (json_solver["type"] == "FreeFEM" or json_solver["type"] == "FreeFEM_ThinFingers"):
+                if morpher is None and (json_solver["type"] == "FreeFEM" or json_solver["type"] == "FreeFEM_ThinFingers"):
                     pde_solver_class = pde_solvers.FreeFEM_ThinFingers
                 elif json_solver["type"] == "FreeFEM_ThinFingers_Boundary" or json_morpher["type"] == "Leaf":
                     pde_solver_class = pde_solvers.FreeFEM_ThinFingers_Boundary

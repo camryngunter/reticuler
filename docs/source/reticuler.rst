@@ -20,13 +20,13 @@ reticuler.system module
 
 .. automodule:: reticuler.system
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: reticuler
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

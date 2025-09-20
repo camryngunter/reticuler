@@ -1,6 +1,14 @@
 reticuler.extending\_kernels package
 ====================================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   reticuler.extending_kernels.pde_solvers
+
 Submodules
 ----------
 
@@ -9,21 +17,13 @@ reticuler.extending\_kernels.extenders module
 
 .. automodule:: reticuler.extending_kernels.extenders
    :members:
-   :undoc-members:
    :show-inheritance:
-
-reticuler.extending\_kernels.pde\_solvers module
-------------------------------------------------
-
-.. automodule:: reticuler.extending_kernels.pde_solvers
-   :members:
    :undoc-members:
-   :show-inheritance:
 
 Module contents
 ---------------
 
 .. automodule:: reticuler.extending_kernels
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

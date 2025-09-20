@@ -139,9 +139,9 @@ def plot_tree(ax, system,
     
         plot_polygon(ax, thick_tree, transform=rot+base, 
                      edgecolor="0", facecolor=options_tree_plot["color"])
-    for branch in system.network.branches:
-        line = branch.points
-        ax.plot(*line.T, '.-', ms=5, transform=rot+base)
+    # for branch in system.network.branches:
+    #     line = branch.points
+    #     ax.plot(*line.T, '.-', ms=5, transform=rot+base)
 
     # if xmin is not None or xmax is not None \
     #     or ymin is not None or ymax is not None:

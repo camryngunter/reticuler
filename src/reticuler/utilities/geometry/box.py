@@ -151,8 +151,8 @@ class Box:
                 "seeds_x": [0.5],
                 "initial_lengths": [0.01],
                 "branch_BCs": [DIRICHLET_0],
-                "height": 0.5,
-                "width": 0.5,
+                "height": 50,
+                "width": 2,
             }
             options_construct.update(kwargs_construct)
             

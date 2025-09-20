@@ -227,9 +227,11 @@ def main():
                     rot_angle=args.rot_angle[0],
                     **args.plot_params[0]
                 )
-            
-                fig.savefig(output_name + f"_S{s}" + args.output_extension[0], 
-                            bbox_inches="tight", dpi=400)
+                if args.frames:
+                    fn = output_name + f"_S{s}" + args.output_extension[0]
+                else:
+                    fn = output_name + args.output_extension[0]
+                fig.savefig(fn, bbox_inches="tight", dpi=400)
                 plt.close()
 
 

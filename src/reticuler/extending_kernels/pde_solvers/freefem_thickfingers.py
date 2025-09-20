@@ -337,19 +337,6 @@ class FreeFEM_ThickFingers(FreeFEM):
         tree = MultiLineString(pts)
         thick_tree = tree.buffer(distance=self.finger_width/2, cap_style=1, join_style=1, quad_segs=25)
         box_ring = LinearRing(network.box.points)
-        #####
-        # box_ring = linemerge( [*box_ring.difference(thick_tree).geoms,
-        #                   *box_ring.intersection(thick_tree).geoms])
-        #####
-        # box_ring_diff_tree = box_ring.difference(thick_tree).geoms
-        # lines_to_merge = []
-        # for i in range(len(box_ring_diff_tree)):
-        #     p1 = box_ring_diff_tree[i].coords[-1]
-        #     p2 = box_ring_diff_tree[(i+1)%len(box_ring_diff_tree)].coords[0]
-        #     lines_to_merge.append(box_ring_diff_tree[i]) # .simplify(tolerance=1e-4)
-        #     lines_to_merge.append(LineString([p1, p2])) # connecting line
-        # box_ring = linemerge(lines_to_merge)
-        #####
         lines_to_merge = [] 
         br_diff_tree = box_ring.difference(thick_tree)
         br_intersec_tree = box_ring.intersection(thick_tree)

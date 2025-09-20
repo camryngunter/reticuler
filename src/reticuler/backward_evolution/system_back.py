@@ -283,7 +283,7 @@ class BackwardSystem:
             },
         }
         
-        if type(self.trimmer.pde_solver).__name__ == "FreeFEM":
+        if type(self.trimmer.pde_solver).__name__ == "FreeFEM_ThinFingers":
             equation_legend = ["Laplace", "Poisson"]
             export_solver = {
                 "type": type(self.trimmer.pde_solver).__name__,
@@ -417,7 +417,7 @@ class BackwardSystem:
                 # length_mismatch is saved in the trimmer after first visit in the bifurcation point
         
             # if we haven't reached the bifurcation point
-            # (if we've reached it only once then the branched is popped from active_branches)
+            # (if we've reached it only once then the branch is popped from active_branches)
             else:
                 initial_point = initial_network.active_branches[i].points[-1]
                 back_point = backward_network.active_branches[i].points[-1]

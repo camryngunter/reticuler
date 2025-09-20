@@ -92,9 +92,9 @@ class FreeFEM_ThinFingers(FreeFEM):
         if bifurcation_thresh is None:
             if self.bifurcation_type == 1:
                 self.bifurcation_thresh = 0.8  # a1 bifurcations
-            if self.bifurcation_type == 2:
+            elif self.bifurcation_type == 2:
                 self.bifurcation_thresh = -0.1  # a3/a1 bifurcations
-            if self.bifurcation_type == 3:
+            elif self.bifurcation_type == 3:
                 self.bifurcation_thresh = 3 * ds # random bifurcations: bif_probability
             else:
                 self.bifurcation_thresh = 0
@@ -215,7 +215,7 @@ class FreeFEM_ThinFingers(FreeFEM):
             // Th = adaptmesh(Th,5.*tipfield(X,Y,3.*R,nbTips),nbvx=500000,nbsmooth=100,iso=true);
             Th = adaptmesh(Th,1,nbvx=500000,hmax=0.1,nbsmooth=100,iso=true,ratio=1.8,keepbackvertices=1);
             real firstAdaptTime=clock() - firstAdaptTime0;
-            // plot(Th, wait=true);
+            plot(Th, wait=true);
             
             // Solving the problem for the first time
             real firstRunTime0=clock();
@@ -240,7 +240,7 @@ class FreeFEM_ThinFingers(FreeFEM):
             	h=hTriangle; // the triangle size
             	nvAroundTips = countNvAroundTips (3.*R, Th, Th.nv, nbTips, X, Y);
             	adaptCounter++;
-                // plot(Th, wait=true);
+                plot(Th, wait=true);
             }
             
             // cout << endl << "Adaptation finished." << " h[].min = " << h[].min;
@@ -249,8 +249,8 @@ class FreeFEM_ThinFingers(FreeFEM):
             // solving with adapted mesh
             potential;
             // cout << "Problem solved." << endl;
-            // plot(Th, wait=true);
-            // plot(u, wait=true, fill=true, value=true);
+            plot(Th, wait=true);
+            plot(u, wait=true, fill=true, value=true);
             
             real adaptTime=clock() - adaptTime0;
             """
@@ -470,7 +470,7 @@ class FreeFEM_ThinFingers(FreeFEM):
                 inside_buildmesh=inside_buildmesh
             )
             + "\nreal buildTime=clock() - buildTime0;\n"
-            + "// plot(Th, wait=true, fill=true);\n"
+            + "plot(Th, wait=true);\n"
         )
                 
         tip_information = textwrap.dedent(
@@ -629,7 +629,6 @@ class FreeFEM_ThinFingers_Boundary(FreeFEM_ThinFingers):
                                             "u=u;", "distExp=distExp;")
         self._script_adaptmesh = add_after(self._script_adaptmesh, \
                                             "*R,nbTips)", ", distExp")
-        self._script_adaptmesh = self._script_adaptmesh.replace("// plot(Th", "plot(Th")
     
         script_flux_rim = textwrap.dedent("""
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
